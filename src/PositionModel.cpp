@@ -1,5 +1,13 @@
 #include "PositionModel.hpp"
 
+/**
+ * @brief PositionModel::readDataFromFolders
+ * @param Path
+ * @param NumberSamples
+ *
+ * This method will read the vertex positions of neutral faces when the files are stored in the original folders
+ */
+
 void PositionModel::readDataFromFolders(std::string Path, int NumberSamples)
 {
     std::string Tester("Tester_"),FullPath,LastPart("/Blendshape/shape_0.obj");
@@ -68,6 +76,10 @@ void PositionModel::readDataFromFolders(std::string Path, int NumberSamples)
 
 
 }
+/**
+ * @brief PositionModel::calculateMeanFace
+ * This method will calculate the average S
+ */
 
 void PositionModel::calculateMeanFace()
 {
@@ -82,10 +94,16 @@ void PositionModel::calculateMeanFace()
         this->m_MeanFace_S += this->m_vFace_S[i];
     }
 
-    this->m_MeanFace_S /= (0.0 + this->m_NumberFaces);
+    this->m_MeanFace_S /= static_cast <double> (this->m_NumberFaces);
 
 
 }
+
+/**
+ * @brief PositionModel::calculateCovariance
+ *
+ * This method calculates the Covariance Matrix of the faces and stores it in the covariance.txt file
+ */
 
 void PositionModel::calculateCovariance()
 {
@@ -112,13 +130,26 @@ void PositionModel::calculateCovariance()
 
     }
 
-    Eigen::MatrixXd v;
+    Eigen::MatrixXd v,vt;
 
 
     for(i = 0; i < this->m_NumberFaces; ++i)
     {
 
         v = this->m_vFace_S[i] - this->m_MeanFace_S;
+        vt = v.transpose();
+
+        //this->m_Covariance_S += v * vt; //Bad alloc
+
+
+        for(j = 0; j < this->m_Covariance_S.rows(); ++j)
+        {
+            this->m_Covariance_S.row(j) += v(j) * vt;
+            std::cout << i << " " << j << "\n";
+        }
+
+
+        /*
 
         for(j = 0; j < this->m_Covariance_S.rows(); ++j)
         {
@@ -131,10 +162,12 @@ void PositionModel::calculateCovariance()
 
         }
 
+        */
+
 
     }
 
-    this->m_Covariance_S /= (0.0 + this->m_NumberFaces);
+    this->m_Covariance_S /= static_cast<double>(this->m_NumberFaces);
 
     std::ofstream ofs("covariance.txt");
 
@@ -147,9 +180,7 @@ void PositionModel::calculateCovariance()
         ofs << std::endl;
     }
 
-
-
-
+    std::cout << "Finished Covariance\n";
 
 }
 
@@ -225,6 +256,8 @@ void PositionModel::calculateEigenVectors()
     this->m_vEigenValues_S = v;
 
     ifs.close();
+
+    std::cout << "Finished EigenVectors\n";
 
 }
 

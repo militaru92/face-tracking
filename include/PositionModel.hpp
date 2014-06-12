@@ -18,7 +18,7 @@ private:
 
     int m_NumberPoints, m_NumberFaces;
     std::vector < std::vector < Point > > m_vFaceVertices;
-    std::vector < Eigen::VectorXd > m_vFace_S;
+    std::vector < Eigen::VectorXd > m_vFace_S; /// This vector stores the S vectores as described in the paper, meaning that we store X_1,Y_1,Z_1, X_2,Y_2,Z_2, ...
 
 
     Eigen::VectorXd m_MeanFace_S;
