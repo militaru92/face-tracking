@@ -8,10 +8,11 @@
  * This method will read the vertex positions of neutral faces when the files are stored in the original folders
  */
 
-void PositionModel::readDataFromFolders(std::string Path, int NumberSamples)
+void PositionModel::readDataFromFolders(std::string Path, int NumberSamples, int NumberVertices)
 {
-    std::string Tester("Tester_"),FullPath,LastPart("/Blendshape/shape_0.obj");
-    int i,j;
+    std::string Tester("Tester_"),FullPath,LastPart("/Blendshape/shape_0.obj"),line,value;
+    size_t index;
+    int i,j,k;
 
     this->m_NumberFaces = NumberSamples;
 
@@ -39,7 +40,6 @@ void PositionModel::readDataFromFolders(std::string Path, int NumberSamples)
 
         while(1)
         {
-            std::string line;
             std::getline(ins,line);
 
             std::stringstream ss(line);
@@ -66,6 +66,33 @@ void PositionModel::readDataFromFolders(std::string Path, int NumberSamples)
             Face.push_back(Vertex);
 
 
+        }
+
+        if(i == 1)
+        {
+            while(line[0] != 'f')
+            {
+                std::getline(ins,line);
+            }
+
+            while(line[0] == 'f' && !ins.eof())
+            {
+                pcl::Vertices mesh;
+                for(k = 0; k < NumberVertices; ++k)
+                {
+                    index = line.find(' ');
+                    line = line.substr(index+1);
+                    index = line.find('/');
+                    value = line.substr(0,index);
+                    mesh.vertices.push_back(this->stringToUInt(value));
+
+
+
+                }
+                this->m_vMeshes.push_back(mesh);
+
+                std::getline(ins,line);
+            }
         }
 
         this->m_vFace_S.push_back(S);
@@ -96,168 +123,45 @@ void PositionModel::calculateMeanFace()
 
     this->m_MeanFace_S /= static_cast <double> (this->m_NumberFaces);
 
+    std::cout << "Done with average face\n";
+
 
 }
 
-/**
- * @brief PositionModel::calculateCovariance
- *
- * This method calculates the Covariance Matrix of the faces and stores it in the covariance.txt file
- */
-
-void PositionModel::calculateCovariance()
-{
-
-
-
-    int i,j,k;
-    double d;
-    this->m_Covariance_S = Eigen::MatrixXd::Zero(this->m_NumberPoints * 3, this->m_NumberPoints * 3);
-
-    std::ifstream ins("covariance.txt");
-
-    if(!ins.fail())
-    {
-        for(i = 0; i < this->m_Covariance_S.rows(); ++i)
-            for(j = 0; j < this->m_Covariance_S.cols(); ++j)
-            {
-                ins >> d;
-                this->m_Covariance_S(i,j) = d;
-
-            }
-
-        return;
-
-    }
-
-    Eigen::MatrixXd v,vt;
-
-
-    for(i = 0; i < this->m_NumberFaces; ++i)
-    {
-
-        v = this->m_vFace_S[i] - this->m_MeanFace_S;
-        vt = v.transpose();
-
-        //this->m_Covariance_S += v * vt; //Bad alloc
-
-
-        for(j = 0; j < this->m_Covariance_S.rows(); ++j)
-        {
-            this->m_Covariance_S.row(j) += v(j) * vt;
-            std::cout << i << " " << j << "\n";
-        }
-
-
-        /*
-
-        for(j = 0; j < this->m_Covariance_S.rows(); ++j)
-        {
-            for(k = 0; k < this->m_Covariance_S.cols(); ++k)
-            {
-                this->m_Covariance_S(j,k) = this->m_Covariance_S(j,k) + v(j) * v(k);
-                std::cout << i << " " << j << "--" << k << " " << this->m_NumberFaces << " " << this->m_Covariance_S.rows() <<" "<< this->m_Covariance_S.cols() <<std::endl;
-            }
-
-
-        }
-
-        */
-
-
-    }
-
-    this->m_Covariance_S /= static_cast<double>(this->m_NumberFaces);
-
-    std::ofstream ofs("covariance.txt");
-
-    for(i = 0; i < this->m_Covariance_S.rows(); ++i)
-    {
-        for(j = 0; j < this->m_Covariance_S.cols(); ++j)
-        {
-            ofs << m_Covariance_S(i,j) << " ";
-        }
-        ofs << std::endl;
-    }
-
-    std::cout << "Finished Covariance\n";
-
-}
 
 void PositionModel::calculateEigenVectors()
 {
+    Eigen::MatrixXd T(3 * this->m_NumberPoints, this->m_NumberFaces);
+    int i,j;
+    Eigen::VectorXd v;
 
-    std::ifstream ifs("eigenvectors.txt");
-    int i,j,k;
-    double d;
-
-    if(ifs.fail())
+    for(i = 0; i < T.cols(); ++i)
     {
-        this->m_Solver.compute(this->m_Covariance_S);
-
-        if(this->m_Solver.eigenvalues().rows() <= 1)
-        {
-            std::cout<<"Solver row is 1" << std::endl;
-            exit(1);
-        }
-
-        this->m_vEigenValues_S = this->m_Solver.eigenvalues().real();
-
-        for(i = 0; i < this->m_Solver.eigenvectors().cols(); ++i)
-            this->m_vEigenVectors_S.push_back(m_Solver.eigenvectors().col(i).real());
-
-        std::ofstream ofs("eigenvectors.txt");
-
-        for(i = 0; i < this->m_vEigenVectors_S.size(); ++i)
-        {
-            for(j = 0; j < this->m_vEigenVectors_S[i].rows(); ++j)
-            {
-                ofs << this->m_vEigenVectors_S[i](j) << " ";
-            }
-
-            ofs << std::endl;
-        }
-
-        ofs.close();
-
-        ofs.open("eigenvalues.txt");
-
-        for(k = 0; k < this->m_vEigenValues_S.rows(); ++k)
-            ofs << this->m_vEigenValues_S(k) << std::endl;
-
-        ofs.close();
-
-        return;
+        T.col(i) = this->m_vFace_S[i] - this->m_MeanFace_S;
     }
 
-    Eigen::VectorXd v(this->m_Covariance_S.cols());
+    Eigen::JacobiSVD<Eigen::MatrixXd> SVD(T.transpose() * T, Eigen::ComputeFullU | Eigen::ComputeFullV);
 
-    for(i = 0; i < this->m_Covariance_S.rows(); ++i)
+    for(i = 0; i < SVD.singularValues().rows(); ++i)
     {
-        for(j = 0; j < this->m_Covariance_S.cols(); ++j)
-        {
-            ifs >> d;
-            v(j) = d;
-        }
+        this->m_vEigenValues_S.push_back(SVD.singularValues()(i));
+    }
 
+    for(i = 0; i < SVD.matrixU().cols(); ++i)
+    {
+        v = T * SVD.matrixU().col(i);
+        v.normalize();
         this->m_vEigenVectors_S.push_back(v);
+
+        //std::cout<< i <<" "<< v.rows()<<std::endl;
     }
 
-    ifs.close();
 
-    ifs.open("eigenvalues.txt");
 
-    for(k = 0; k < this->m_Covariance_S.cols(); ++k)
-    {
-        ifs >> d;
-        v(k) = d;
-    }
+    //std::cout<<SVD.singularValues().cols() <<" " <<SVD.singularValues().rows()<<std::endl;
+    std::cout << "Done with Eigenvectors\n";
 
-    this->m_vEigenValues_S = v;
 
-    ifs.close();
-
-    std::cout << "Finished EigenVectors\n";
 
 }
 
@@ -282,6 +186,7 @@ void PositionModel::readWeights(std::string FilePath)
 
 }
 
+
 void PositionModel::calculateModel_S()
 {
     int i;
@@ -291,6 +196,76 @@ void PositionModel::calculateModel_S()
         this->m_FaceModel_S += this->m_vWeights[i] * this->m_vEigenVectors_S[i];
 }
 
+void PositionModel::debug()
+{
+    std::ofstream ofs1("meshes.txt");
+    int i,j;
+
+    for(i = 0; i < this->m_vMeshes.size(); ++i)
+    {
+        for(j = 0; j < this->m_vMeshes[i].vertices.size(); ++j)
+        {
+            ofs1 << this->m_vMeshes[i].vertices[j] << ' ';
+        }
+
+        ofs1 << std::endl;
+    }
+}
+
+void PositionModel::printEigenValues()
+{
+
+    std::ofstream ofs("eigenvalues.txt");
+    int i;
+
+    for(i = 0; i < this->m_vEigenValues_S.size(); ++i)
+    {
+        ofs << this->m_vEigenValues_S[i] <<std::endl;
+    }
+}
+
+void PositionModel::viewModel_S(int index)
+{
+    int i;
+    Eigen::VectorXd positions;
+
+    if(index == -1)
+        positions = this->m_FaceModel_S;
+    else
+        positions = this->m_vFace_S[index];
+
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    viewer->setBackgroundColor (0, 0, 0);
+
+    pcl::PointXYZ basic_point;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr basic_cloud_ptr (new pcl::PointCloud<pcl::PointXYZ>);
+
+    for(i = 0; i < 3 * this->m_NumberPoints;)
+    {
+        basic_point.x = static_cast<float>(positions(i++));
+        basic_point.y = static_cast<float>(positions(i++));
+        basic_point.z = static_cast<float>(positions(i++));
+
+        basic_cloud_ptr->points.push_back(basic_point);
+    }
+
+    std::string polygon("polygon");
+
+    viewer->addPolygonMesh <pcl::PointXYZ> (basic_cloud_ptr,this->m_vMeshes,polygon,0);
+
+
+
+    viewer->addCoordinateSystem (1.0, 0);
+    viewer->initCameraParameters ();
+
+    while (!viewer->wasStopped ())
+    {
+        viewer->spinOnce (100);
+        boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+    }
+
+}
+
 std::string PositionModel::intToString(int Number)
 {
     std::stringstream ss;
@@ -298,4 +273,12 @@ std::string PositionModel::intToString(int Number)
     ss<<Number;
     ss>>s;
     return s;
+}
+
+u_int32_t PositionModel::stringToUInt(std::string String)
+{
+    std::stringstream ss(String);
+    u_int32_t n;
+    ss>>n;
+    return n;
 }
