@@ -4,7 +4,7 @@
 int main()
 {
 
-    int index;
+    int index,NumberSamples;
     std::string path,obj_path;
     PositionModel model;
 
@@ -15,8 +15,10 @@ int main()
     getchar();
     std::cout<<"Type the path for the obj file\n";
     std::getline(cin,obj_path);
+    std::cout<<"Type the number of eigenvectors to use\n";
+    std::cin>>NumberSamples;
 
-    std::cout<<"This" << obj_path << std::endl;
+    //std::cout<<"This" << obj_path << std::endl;
 
 
 
@@ -29,7 +31,8 @@ int main()
     model.calculateMeanFace();
     model.calculateEigenVectors();
     model.printEigenValues();
-    model.readWeights("weights.txt");
+    //model.readWeights("weights.txt");
+    model.calculateRandomWeights(NumberSamples,obj_path);
     model.calculateModel_S();
     //model.viewModel_S(index);
     model.writeModel_S(index,obj_path);

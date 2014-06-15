@@ -224,6 +224,30 @@ void PositionModel::printEigenValues()
     }
 }
 
+void PositionModel::calculateRandomWeights(int NumberSamples, std::string Name)
+{
+    int i;
+    double w,d;
+    std::ofstream ofs_1((std::string("random_") + Name + std::string(".txt")).c_str()), ofs_2((std::string("weights_") + Name + std::string(".txt")).c_str());
+
+    srand (time(NULL));
+
+    for(i = 0; i < NumberSamples; ++i)
+    {
+
+        d = (double)rand() / RAND_MAX;
+        w = d * 6.0 - 3.0;
+
+        ofs_1 << w <<std::endl;
+
+        this->m_vWeights.push_back(w * this->m_vEigenValues_S[i]);
+
+        ofs_2 << this->m_vWeights[i] << std::endl;
+    }
+
+
+}
+
 void PositionModel::viewModel_S(int index)
 {
     int i;
@@ -275,7 +299,7 @@ void PositionModel::writeModel_S(int index,std::string Path)
     else
         positions = &(this->m_vFace_S[index]);
 
-    std::ofstream ofs(Path.c_str());
+    std::ofstream ofs((Path + ".obj").c_str());
 
     int i,j;
 

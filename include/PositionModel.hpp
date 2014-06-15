@@ -46,6 +46,7 @@ public:
 
     void debug();
     void printEigenValues();
+    void calculateRandomWeights(int, std::string);
 
     void viewModel_S(int);
     void writeModel_S(int,std::string);
