@@ -48,6 +48,7 @@ public:
     void printEigenValues();
 
     void viewModel_S(int);
+    void writeModel_S(int,std::string);
 
 
     static std::string intToString(int);

@@ -266,6 +266,49 @@ void PositionModel::viewModel_S(int index)
 
 }
 
+void PositionModel::writeModel_S(int index,std::string Path)
+{
+    Eigen::VectorXd *positions;
+
+    if(index == -1)
+        positions = &(this->m_FaceModel_S);
+    else
+        positions = &(this->m_vFace_S[index]);
+
+    std::ofstream ofs(Path.c_str());
+
+    int i,j;
+
+    for(i = 0; i < positions->rows(); ++i)
+    {
+        if(i % 3 == 0)
+            ofs << "v ";
+
+        ofs << (*positions)(i);
+
+        if(i % 3 == 2)
+            ofs << std::endl;
+        else
+            ofs << ' ';
+
+    }
+
+
+    for(i = 0; i < this->m_vMeshes.size(); ++i)
+    {
+        ofs << 'f';
+
+        for(j = 0; j < this->m_vMeshes[i].vertices.size(); ++j)
+        {
+            ofs<< ' ' << this->m_vMeshes[i].vertices[j];
+        }
+
+        ofs << std::endl;
+    }
+
+    ofs.close();
+}
+
 std::string PositionModel::intToString(int Number)
 {
     std::stringstream ss;

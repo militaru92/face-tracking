@@ -5,13 +5,19 @@ int main()
 {
 
     int index;
-    std::string path;
+    std::string path,obj_path;
     PositionModel model;
 
     std::cout<<"Type the path of the database\n";
     std::getline(cin,path);
     std::cout<<"Type the index of the face to visualze or -1 for the statistical model\n";
     std::cin>>index;
+    getchar();
+    std::cout<<"Type the path for the obj file\n";
+    std::getline(cin,obj_path);
+
+    std::cout<<"This" << obj_path << std::endl;
+
 
 
 
@@ -25,7 +31,8 @@ int main()
     model.printEigenValues();
     model.readWeights("weights.txt");
     model.calculateModel_S();
-    model.viewModel_S(index);
+    //model.viewModel_S(index);
+    model.writeModel_S(index,obj_path);
 
 
     return 0;
