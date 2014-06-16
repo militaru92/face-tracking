@@ -131,7 +131,7 @@ void PositionModel::calculateMeanFace()
 
 void PositionModel::calculateEigenVectors()
 {
-    Eigen::MatrixXd T(3 * this->m_NumberPoints, this->m_NumberFaces);
+    Eigen::MatrixXd T(3 * this->m_NumberPoints, this->m_NumberFaces), T_tT;
     int i,j;
     Eigen::VectorXd v;
 
@@ -140,7 +140,9 @@ void PositionModel::calculateEigenVectors()
         T.col(i) = this->m_vFace_S[i] - this->m_MeanFace_S;
     }
 
-    Eigen::EigenSolver <Eigen::MatrixXd> solver(T.transpose() * T);
+    T_tT = (T.transpose() * T) / static_cast<double> (this->m_NumberFaces) ;
+
+    Eigen::EigenSolver <Eigen::MatrixXd> solver(T_tT);
 
     for(i = 0; i < solver.eigenvalues().rows(); ++i)
     {
