@@ -140,16 +140,16 @@ void PositionModel::calculateEigenVectors()
         T.col(i) = this->m_vFace_S[i] - this->m_MeanFace_S;
     }
 
-    Eigen::JacobiSVD<Eigen::MatrixXd> SVD(T.transpose() * T, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    Eigen::EigenSolver <Eigen::MatrixXd> solver(T.transpose() * T);
 
-    for(i = 0; i < SVD.singularValues().rows(); ++i)
+    for(i = 0; i < solver.eigenvalues().rows(); ++i)
     {
-        this->m_vEigenValues_S.push_back(SVD.singularValues()(i));
+        this->m_vEigenValues_S.push_back((solver.eigenvalues()[i]).real());
     }
 
-    for(i = 0; i < SVD.matrixU().cols(); ++i)
+    for(i = 0; i < solver.eigenvectors().cols(); ++i)
     {
-        v = T * SVD.matrixU().col(i);
+        v = T * ((solver.eigenvectors().col(i)).real());
         v.normalize();
         this->m_vEigenVectors_S.push_back(v);
 
@@ -160,7 +160,6 @@ void PositionModel::calculateEigenVectors()
 
     //std::cout<<SVD.singularValues().cols() <<" " <<SVD.singularValues().rows()<<std::endl;
     std::cout << "Done with Eigenvectors\n";
-
 
 
 }
@@ -237,7 +236,7 @@ void PositionModel::calculateRandomWeights(int NumberSamples, std::string Name)
 
         d = (double)rand() / RAND_MAX;
         w = d * 6.0 - 3.0;
-
+        //w = 0.5;
         ofs_1 << w <<std::endl;
 
         this->m_vWeights.push_back(w * this->m_vEigenValues_S[i]);
