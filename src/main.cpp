@@ -1,42 +1,31 @@
-#include <iostream>
-#include "PositionModel.hpp"
+#include <PositionModel.h>
 
-int main()
+int main(int argc, char** argv)
 {
 
-    int index,NumberSamples;
-    std::string path,obj_path;
-    PositionModel model;
+  if(argc < 3)
+  {
+    PCL_ERROR("You need to pass the path of the data base and the path where you want to store the model\n");
+    exit(1);
+  }
 
-    std::cout<<"Type the path of the database\n";
-    std::getline(cin,path);
-    std::cout<<"Type the index of the face to visualze or -1 for the statistical model\n";
-    std::cin>>index;
-    getchar();
-    std::cout<<"Type the path for the obj file\n";
-    std::getline(cin,obj_path);
-    std::cout<<"Type the number of eigenvectors to use\n";
-    std::cin>>NumberSamples;
+  std::string database_path,obj_path;
 
-    //std::cout<<"This" << obj_path << std::endl;
+  database_path = argv[1];
+  obj_path = argv[2];
+
+  PositionModel model;
 
 
+  //model.readDataFromFolders("/media/ace/New Volume/Google Summer/Part1/",150,4);
 
+  model.readDataFromFolders(database_path,150,4);
+  model.calculateMeanFace();
+  model.calculateEigenVectors();
+  model.printEigenValues();
+  model.calculateRandomWeights(50,obj_path);
+  model.calculateModel();
+  model.writeModel(-1,obj_path);
 
-
-    //model.readDataFromFolders("/media/ace/New Volume/Google Summer/Part1/",150,4);
-
-    model.readDataFromFolders(path,150,4);
-    model.debug();
-    model.calculateMeanFace();
-    model.calculateEigenVectors();
-    model.printEigenValues();
-    //model.readWeights("weights.txt");
-    model.calculateRandomWeights(NumberSamples,obj_path);
-    model.calculateModel_S();
-    //model.viewModel_S(index);
-    model.writeModel_S(index,obj_path);
-
-
-    return 0;
+  return (0);
 }
