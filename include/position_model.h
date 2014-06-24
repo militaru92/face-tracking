@@ -21,16 +21,17 @@ class PositionModel
     std::vector < Eigen::VectorXd > eigenvectors_vector_;
 
     std::vector <double> weights_vector_;
+    //std::vector <Eigen::Vector3d
 
   public:
     void
-    readDataFromFolders (std::string,int,int);
+    readDataFromFolders (std::string, int number_samples, int number_vertices);
 
     void
-    readDataFromFiles (std::string);
+    readDataFromFiles (std::string );
 
     void
-    readWeights (std::string);
+    readWeights (std::string file_path);
 
     void
     calculateMeanFace ();
@@ -45,13 +46,18 @@ class PositionModel
     printEigenValues ();
 
     void
-    calculateRandomWeights (int, std::string);
+    calculateRandomWeights (int number_samples, std::string name);
 
     void
-    viewModel (int);
+    viewModel (int index);
 
     void
-    writeModel (int,std::string);
+    writeModel (int index,std::string path);
+
+    //debuging methods
+
+    void
+    writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation, Eigen::Vector3d translation, std::string mean_path, std::string transformed_path, std::vector < Eigen::Vector3d>& source_points, std::vector < Eigen::Vector3d>& target_points);
 
 
 };

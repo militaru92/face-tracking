@@ -1,4 +1,4 @@
-#include <PositionModel.h>
+#include <position_model.h>
 
 
 void
@@ -136,9 +136,9 @@ PositionModel::calculateEigenVectors ()
 }
 
 void
-PositionModel::readWeights (std::string Filepath)
+PositionModel::readWeights (std::string file_path)
 {
-  std::ifstream ifs(Filepath.c_str());
+  std::ifstream ifs(file_path.c_str());
   double d;
   if(ifs.fail())
   {
@@ -181,11 +181,11 @@ PositionModel::printEigenValues ()
 }
 
 void
-PositionModel::calculateRandomWeights (int number_samples, std::string Name)
+PositionModel::calculateRandomWeights (int number_samples, std::string name)
 {
   int i;
   double w,d;
-  std::ofstream ofs_1((std::string("random_") + Name + std::string(".txt")).c_str()), ofs_2((std::string("weights_") + Name + std::string(".txt")).c_str());
+  std::ofstream ofs_1((std::string("random_") + name + std::string(".txt")).c_str()), ofs_2((std::string("weights_") + name + std::string(".txt")).c_str());
 
   srand (time(NULL));
 
@@ -285,5 +285,53 @@ PositionModel::writeModel (int index,std::string path)
   }
 
   ofs.close();
+}
+
+void
+PositionModel::writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation_matrix, Eigen::Vector3d translation_vector, std::string mean_path, std::string transformed_path, std::vector < Eigen::Vector3d>& source_points, std::vector < Eigen::Vector3d>& target_points)
+{
+  int i,j;
+  std::ofstream ofs_mean_face(mean_path.c_str());
+  std::ofstream ofs_transformed_mean_face(transformed_path.c_str());
+
+  Eigen::Vector3d point;
+  Eigen::Vector3d transformed_point;
+
+  for( i = 0; i < mean_face_positions_.rows(); i+=3)
+  {
+    point[0] = mean_face_positions_(i);
+    point[1] = mean_face_positions_(i+1);
+    point[2] = mean_face_positions_(i+2);
+
+    source_points.push_back(point);
+
+    transformed_point = rotation_matrix * point + translation_vector;
+
+    target_points.push_back(transformed_point);
+
+    ofs_mean_face << "v " << point[0] << ' ' << point[1] << ' ' << point[2] << std::endl;
+    ofs_transformed_mean_face << "v " << transformed_point[0] << ' ' << transformed_point[1] << ' ' << transformed_point[2] << std::endl;
+  }
+
+
+  for(i = 0; i < meshes_.size(); ++i)
+  {
+    ofs_mean_face << 'f';
+    ofs_transformed_mean_face << 'f';
+
+    for(j = 0; j < meshes_[i].vertices.size(); ++j)
+    {
+      ofs_mean_face<< ' ' << meshes_[i].vertices[j];
+      ofs_transformed_mean_face<< ' ' << meshes_[i].vertices[j];
+    }
+
+    ofs_mean_face << std::endl;
+    ofs_transformed_mean_face << std::endl;
+  }
+
+
+
+  ofs_mean_face.close();
+  ofs_transformed_mean_face.close();
 }
 
