@@ -37,12 +37,15 @@ int main(int argc, char** argv)
   Eigen::Matrix3d rotation,cross;
 
   axis << 1, 1, 1;
+  translation << 0, 0, 0;
 
   cross << 0, -1, 1,
            1, 0, -1,
            -1, 0, 1;
 
   rotation = cos(pi/3.0) * Eigen::Matrix3d::Identity() + sin(pi/3.0) * cross + (1 - cos(pi/3.0)) * axis * axis.transpose();
+
+  std::cout << "Rotation\n" << rotation << std::endl << std::endl;
 
   Registration registrator;
 

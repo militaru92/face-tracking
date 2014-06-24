@@ -3,6 +3,7 @@
 
 #include "position_model.h"
 #include <pcl/io/pcd_io.h>
+#include <pcl/kdtree/kdtree_flann.h>
 
 class Registration
 {
@@ -36,6 +37,9 @@ class Registration
     std::vector < Eigen::Vector3d > source_points_;
     std::vector < Eigen::Vector3d > target_points_;
     std::vector < Eigen::Vector4d > rigid_transformed_points_;
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr_;
+    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree_;
 
     PositionModel* model_;
 
