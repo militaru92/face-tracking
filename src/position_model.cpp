@@ -246,24 +246,18 @@ PositionModel::viewModel (int index)
 }
 
 void
-PositionModel::writeModel (int index,std::string path)
+PositionModel::writeModel (std::string path)
 {
-  Eigen::VectorXd *positions;
-
-  if(index == -1)
-    positions = &(face_position_model_);
-  else
-    positions = &(faces_position_cordiantes_[index]);
 
   std::ofstream ofs((path + ".obj").c_str());
 
   int i,j;
 
-  for(i = 0; i < positions->rows(); ++i)
+  for(i = 0; i < face_position_model_.rows(); ++i)
   {
     if(i % 3 == 0)
       ofs << "v ";
-    ofs << (*positions)(i);
+    ofs << face_position_model_(i);
 
     if(i % 3 == 2)
       ofs << std::endl;
@@ -303,13 +297,20 @@ PositionModel::writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation_matrix,
     point[1] = mean_face_positions_(i+1);
     point[2] = mean_face_positions_(i+2);
 
+    ofs_mean_face << "v " << point[0] << ' ' << point[1] << ' ' << point[2] << std::endl;
+
     source_points.push_back(point);
+
+    point[0] = face_position_model_(i);
+    point[1] = face_position_model_(i+1);
+    point[2] = face_position_model_(i+2);
+
 
     transformed_point = rotation_matrix * point + translation_vector;
 
     target_points.push_back(transformed_point);
 
-    ofs_mean_face << "v " << point[0] << ' ' << point[1] << ' ' << point[2] << std::endl;
+
     ofs_transformed_mean_face << "v " << transformed_point[0] << ' ' << transformed_point[1] << ' ' << transformed_point[2] << std::endl;
   }
 

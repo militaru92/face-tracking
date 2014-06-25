@@ -3,33 +3,116 @@
 Registration::Registration()
 {
   homogeneus_matrix_ = Eigen::Matrix4d::Identity();
-  model_ = new PositionModel;
+  position_model_ = NULL;
 }
 
 Registration::~Registration()
 {
-  delete model_;
+  if( position_model_ )
+  {
+    PCL_INFO ("Model deleted\n");
+    delete position_model_;
+  }
+
 }
 
 void
-Registration::readData(std::string source_points_path, std::string target_points_path)
+Registration::readDataFromOBJFiles(std::string source_points_path, std::string target_points_path)
 {
   // to be later implemented if needed
 
+  pcl::PointXYZ pcl_point;
+
+
+  int i;
+
+  readOBJFile(source_points_path,source_points_);
+
+  readOBJFile(target_points_path, target_points_);
+
+
+  target_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>);
+
+  target_point_cloud_ptr_->width = target_points_.size();
+  target_point_cloud_ptr_->height = 1;
+
+  for( i = 0; i < target_points_.size(); ++i)
+  {
+    pcl_point.x = target_points_[i][0];
+    pcl_point.y = target_points_[i][1];
+    pcl_point.z = target_points_[i][2];
+
+    target_point_cloud_ptr_->points.push_back(pcl_point);
+  }
+
+  kdtree_.setInputCloud(target_point_cloud_ptr_);
 
 
 }
 
 void
-Registration::getDataFromModel(std::string database_path,Eigen::MatrixX3d rotation, Eigen::Vector3d translation)
+Registration::readOBJFile(std::string file_path, std::vector < Eigen::Vector3d >& points_vector)
+{
+
+  std::ifstream instream(file_path.c_str());
+  std::string line;
+
+  Eigen::Vector3d point;
+
+  if(instream.fail())
+  {
+    PCL_ERROR("Could not open file %s\n", file_path.c_str());
+    exit(1);
+  }
+
+
+
+  while(1)
+  {
+    std::getline(instream,line);
+
+    std::stringstream ss(line);
+    std::string s;
+
+    ss >> s;
+    if(s.compare("v") != 0)
+      break;
+
+    ss >> point[0];
+    ss >> point[1];
+    ss >> point[2];
+
+    points_vector.push_back(point);
+
+
+  }
+
+  instream.close();
+}
+
+void
+Registration::getDataFromModel(std::string database_path, std::string output_path, Eigen::MatrixX3d rotation, Eigen::Vector3d translation)
 {
   int i;
 
   pcl::PointXYZ point;
 
-  model_->readDataFromFolders(database_path,150,4);
-  model_->calculateMeanFace();
-  model_->writeMeanFaceAndRotatedMeanFace(rotation,translation,"Average.obj","Transformed.obj",source_points_,target_points_);
+  if(!position_model_)
+  {
+    PCL_INFO ("Created Model\n");
+    position_model_ = new PositionModel;
+  }
+
+  position_model_->readDataFromFolders(database_path,150,4);
+  position_model_->calculateMeanFace();
+
+  position_model_->calculateEigenVectors();
+  position_model_->printEigenValues();
+  position_model_->calculateRandomWeights(50,output_path);
+  position_model_->calculateModel();
+  position_model_->writeModel(output_path);
+
+  position_model_->writeMeanFaceAndRotatedMeanFace(rotation, translation, output_path + "_source.obj", output_path +"_transformed.obj",source_points_,target_points_);
 
 
   target_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -189,11 +272,12 @@ Registration::writeDataToPCD(std::string file_path)
   uint32_t rgb;
   uint8_t value(255);
 
-  cloud.width = 3 * rigid_transformed_points_.size();
+  cloud.width = 2 * rigid_transformed_points_.size();
   cloud.height = 1;
 
   for( i = 0; i < rigid_transformed_points_.size(); ++i)
   {
+    /*
     point.x = source_points_[i][0];
     point.y = source_points_[i][1];
     point.z = source_points_[i][2];
@@ -202,6 +286,8 @@ Registration::writeDataToPCD(std::string file_path)
     point.rgb = *reinterpret_cast<float*>(&rgb);
 
     cloud.points.push_back(point);
+    */
+
 
     point.x = target_points_[i][0];
     point.y = target_points_[i][1];
@@ -211,6 +297,7 @@ Registration::writeDataToPCD(std::string file_path)
     point.rgb = *reinterpret_cast<float*>(&rgb);
 
     cloud.points.push_back(point);
+
 
 
     point.x = rigid_transformed_points_[i][0];
@@ -227,7 +314,7 @@ Registration::writeDataToPCD(std::string file_path)
 
   }
 
-  pcl::io::savePCDFileASCII (file_path, cloud);
+  pcl::io::savePCDFileASCII (file_path + ".pcd", cloud);
 
 
 }

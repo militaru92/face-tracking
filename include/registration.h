@@ -13,19 +13,22 @@ class Registration
     ~Registration();
 
     void
-    readData (std::string source_points_path, std::string target_points_path);
+    readDataFromOBJFiles (std::string source_points_path, std::string target_points_path);
 
     void
-    getDataFromModel(std::string database_path, Eigen::MatrixX3d rotation, Eigen::Vector3d translation);
+    readOBJFile (std::string file_path, std::vector < Eigen::Vector3d >& points_vector);
 
     void
-    calculateRigidTransformation(int number_of_iterations);
+    getDataFromModel (std::string database_path, std::string output_path, Eigen::MatrixX3d rotation, Eigen::Vector3d translation);
 
     void
-    applyRigidTransformation();
+    calculateRigidTransformation (int number_of_iterations);
 
     void
-    writeDataToPCD(std::string file_path);
+    applyRigidTransformation ();
+
+    void
+    writeDataToPCD (std::string file_path);
 
 
   private:
@@ -41,7 +44,7 @@ class Registration
     pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr_;
     pcl::KdTreeFLANN<pcl::PointXYZ> kdtree_;
 
-    PositionModel* model_;
+    PositionModel* position_model_;
 
 };
 

@@ -52,7 +52,7 @@ class PositionModel
     viewModel (int index);
 
     void
-    writeModel (int index,std::string path);
+    writeModel (std::string path);
 
     //debuging methods
 

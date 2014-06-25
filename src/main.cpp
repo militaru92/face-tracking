@@ -9,7 +9,7 @@ int main(int argc, char** argv)
     exit(1);
   }
 
-  std::string database_path,obj_path;
+  std::string database_path,obj_path,source_path,target_path;
 
   database_path = argv[1];
   obj_path = argv[2];
@@ -28,7 +28,7 @@ int main(int argc, char** argv)
   model.printEigenValues();
   model.calculateRandomWeights(50,obj_path);
   model.calculateModel();
-  model.writeModel(-1,obj_path);
+  model.writeModel(obj_path);
   */
 
   double pi = atan(1);
@@ -49,8 +49,19 @@ int main(int argc, char** argv)
 
   Registration registrator;
 
-  registrator.getDataFromModel(database_path,rotation,translation);
-  registrator.calculateRigidTransformation(1);
+  if(argc >= 5)
+  {
+    source_path = argv[3];
+    target_path = argv[4];
+    registrator.readDataFromOBJFiles(source_path,target_path);
+  }
+
+  else
+  {
+    registrator.getDataFromModel(database_path, obj_path, rotation, translation);
+  }
+
+  registrator.calculateRigidTransformation(100);
   registrator.applyRigidTransformation();
   registrator.writeDataToPCD(obj_path);
 
