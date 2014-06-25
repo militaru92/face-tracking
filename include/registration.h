@@ -37,8 +37,7 @@ class Registration
 
   private:
 
-    Eigen::Matrix3d rotation_;
-    Eigen::Vector3d translation_;
+
     Eigen::Matrix4d homogeneus_matrix_;
 
     std::vector < Eigen::Vector3d > source_points_;

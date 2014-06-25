@@ -19,7 +19,6 @@ Registration::~Registration()
 void
 Registration::readDataFromOBJFiles(std::string source_points_path, std::string target_points_path)
 {
-  // to be later implemented if needed
 
   pcl::PointXYZ pcl_point;
 
@@ -97,8 +96,22 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
 {
 
   int i;
+  Eigen::Matrix3d transform = Eigen::Matrix3d::Identity();
+  Eigen::Vector3d translation;
+
+  transform(0,0) = 0.1;
+  transform(1,1) = 0.1;
+  transform(2,2) = 0.1;
+
+  translation[0] = 1.5;
+  translation[1] = 1.0;
+  translation[2] = 0.0;
+
 
   readOBJFile(source_points_path,source_points_);
+
+  for( i = 0; i < source_points_.size(); ++i)
+      source_points_[i] = transform * source_points_[i] + translation;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr scan_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -266,10 +279,10 @@ Registration::calculateRigidTransformation(int number_of_iterations)
     resulting_homogeneus_matrix = current_homogeneus_matrix * homogeneus_matrix_;
 
     double difference = ( resulting_homogeneus_matrix - homogeneus_matrix_ ).norm();
-
+/*
     if(difference < 0.1)
         break;
-
+*/
     homogeneus_matrix_ = resulting_homogeneus_matrix;
 
   }
@@ -277,6 +290,7 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
 
 }
+
 
 void
 Registration::applyRigidTransformation()
@@ -295,6 +309,8 @@ Registration::applyRigidTransformation()
 
     rigid_transformed_points_.push_back(transformed_point);
   }
+
+  //std::cout<< "Transformation matrix\n"<<homogeneus_matrix_<<std::endl<<std::endl;
 
 }
 
