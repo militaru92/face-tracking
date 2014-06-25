@@ -1,4 +1,5 @@
 #include <registration.h>
+#include <pcl/console/parse.h>
 
 int main(int argc, char** argv)
 {
@@ -49,16 +50,23 @@ int main(int argc, char** argv)
 
   Registration registrator;
 
-  if(argc >= 5)
+  if(pcl::console::find_argument (argc, argv, "-o") >= 0)
   {
     source_path = argv[3];
     target_path = argv[4];
     registrator.readDataFromOBJFiles(source_path,target_path);
   }
 
-  else
+  if(pcl::console::find_argument (argc, argv, "-m") >= 0)
   {
     registrator.getDataFromModel(database_path, obj_path, rotation, translation);
+  }
+
+  if(pcl::console::find_argument (argc, argv, "-p") >= 0)
+  {
+      source_path = argv[3];
+      target_path = argv[4];
+      registrator.readDataFromOBJFileAndPCDScan(source_path,target_path);
   }
 
   registrator.calculateRigidTransformation(100);

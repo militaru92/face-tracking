@@ -26,21 +26,23 @@ Registration::readDataFromOBJFiles(std::string source_points_path, std::string t
 
   int i;
 
+  std::vector < Eigen::Vector3d > target_points;
+
   readOBJFile(source_points_path,source_points_);
 
-  readOBJFile(target_points_path, target_points_);
+  readOBJFile(target_points_path, target_points);
 
 
   target_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>);
 
-  target_point_cloud_ptr_->width = target_points_.size();
+  target_point_cloud_ptr_->width = target_points.size();
   target_point_cloud_ptr_->height = 1;
 
-  for( i = 0; i < target_points_.size(); ++i)
+  for( i = 0; i < target_points.size(); ++i)
   {
-    pcl_point.x = target_points_[i][0];
-    pcl_point.y = target_points_[i][1];
-    pcl_point.z = target_points_[i][2];
+    pcl_point.x = target_points[i][0];
+    pcl_point.y = target_points[i][1];
+    pcl_point.z = target_points[i][2];
 
     target_point_cloud_ptr_->points.push_back(pcl_point);
   }
@@ -91,11 +93,44 @@ Registration::readOBJFile(std::string file_path, std::vector < Eigen::Vector3d >
 }
 
 void
+Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std::string target_points_path)
+{
+
+  int i;
+
+  readOBJFile(source_points_path,source_points_);
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr scan_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+  target_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>);
+
+  if (pcl::io::loadPCDFile<pcl::PointXYZ> (target_points_path, *scan_cloud) == -1) //* load the file
+  {
+    PCL_ERROR("Could not open file %s\n", target_points_path.c_str());
+    exit(1);
+  }
+
+  pcl::StatisticalOutlierRemoval<pcl::PointXYZ> outliers_filter;
+  outliers_filter.setInputCloud(scan_cloud);
+  outliers_filter.setMeanK(50);
+  outliers_filter.setStddevMulThresh(10);
+  outliers_filter.filter(*target_point_cloud_ptr_);
+
+  pcl::io::savePCDFileASCII("filtered_cloud.pcd", *target_point_cloud_ptr_);
+
+  kdtree_.setInputCloud(target_point_cloud_ptr_);
+
+
+}
+
+void
 Registration::getDataFromModel(std::string database_path, std::string output_path, Eigen::MatrixX3d rotation, Eigen::Vector3d translation)
 {
   int i;
 
   pcl::PointXYZ point;
+
+  std::vector < Eigen::Vector3d > target_points;
 
   if(!position_model_)
   {
@@ -112,19 +147,19 @@ Registration::getDataFromModel(std::string database_path, std::string output_pat
   position_model_->calculateModel();
   position_model_->writeModel(output_path);
 
-  position_model_->writeMeanFaceAndRotatedMeanFace(rotation, translation, output_path + "_source.obj", output_path +"_transformed.obj",source_points_,target_points_);
+  position_model_->writeMeanFaceAndRotatedMeanFace(rotation, translation, output_path + "_source.obj", output_path +"_transformed.obj",source_points_,target_points);
 
 
   target_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>);
 
-  target_point_cloud_ptr_->width = target_points_.size();
+  target_point_cloud_ptr_->width = target_points.size();
   target_point_cloud_ptr_->height = 1;
 
-  for( i = 0; i < target_points_.size(); ++i)
+  for( i = 0; i < target_points.size(); ++i)
   {
-    point.x = target_points_[i][0];
-    point.y = target_points_[i][1];
-    point.z = target_points_[i][2];
+    point.x = target_points[i][0];
+    point.y = target_points[i][1];
+    point.z = target_points[i][2];
 
     target_point_cloud_ptr_->points.push_back(point);
   }
@@ -139,7 +174,7 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 {
 
   PCL_INFO("In calculate method\n");
-  PCL_INFO("Size of sources_ and targets_ %d %d \n",source_points_.size(),target_points_.size());
+  PCL_INFO("Size of sources_ and targets_ %d\n",source_points_.size());
   int i,j,k;
 
   pcl::PointXYZ search_point;
@@ -152,14 +187,13 @@ Registration::calculateRigidTransformation(int number_of_iterations)
   Eigen::Vector3d current_iteration_translation;
 
   std::vector < Eigen::Vector3d > current_iteration_source_points = source_points_;
-  std::vector < Eigen::Vector3d > current_iteration_target_points;
 
   std::vector < int > point_index(1);
   std::vector < float > point_distance(1);
 
   for(i = 0; i < 3; ++i)
   {
-    y[i].resize(target_points_.size());
+    y[i].resize(source_points_.size());
 
   }
 
@@ -222,20 +256,22 @@ Registration::calculateRigidTransformation(int number_of_iterations)
       current_iteration_source_points[i] = current_iteration_rotation * current_iteration_source_points[i] + current_iteration_translation;
     }
 
-    Eigen::Matrix4d current_homogeneus_matrix;
-    //std::cout << rotation_ <<std::endl<<std::endl;
-
-    //std::cout << translation_ << std::endl<<std::endl;
+    Eigen::Matrix4d current_homogeneus_matrix,resulting_homogeneus_matrix;
 
     current_homogeneus_matrix.block(0, 0, 3, 3) = current_iteration_rotation;
     current_homogeneus_matrix.block(0, 3, 3, 1) = current_iteration_translation;
     current_homogeneus_matrix.row(3) << 0, 0, 0, 1;
 
-    //std::cout << homogeneus_matrix_<<std::endl<<std::endl;
 
-    homogeneus_matrix_ = current_homogeneus_matrix * homogeneus_matrix_;
+    resulting_homogeneus_matrix = current_homogeneus_matrix * homogeneus_matrix_;
 
-    //std::cout << homogeneus_matrix_<<std::endl<<std::endl;
+    double difference = ( resulting_homogeneus_matrix - homogeneus_matrix_ ).norm();
+
+    if(difference < 0.1)
+        break;
+
+    homogeneus_matrix_ = resulting_homogeneus_matrix;
+
   }
 
 
@@ -260,20 +296,19 @@ Registration::applyRigidTransformation()
     rigid_transformed_points_.push_back(transformed_point);
   }
 
-  std::cout<< "Apply\n" << original_point <<std::endl << std::endl << transformed_point<<std::endl<<std::endl;
 }
 
 void
 Registration::writeDataToPCD(std::string file_path)
 {
-  pcl::PointCloud < pcl::PointXYZRGB > cloud;
+  pcl::PointCloud < pcl::PointXYZRGB > rigid_cloud, output_cloud, target_cloud;
   pcl::PointXYZRGB point;
   int i;
   uint32_t rgb;
   uint8_t value(255);
 
-  cloud.width = 2 * rigid_transformed_points_.size();
-  cloud.height = 1;
+  rigid_cloud.width = rigid_transformed_points_.size();
+  rigid_cloud.height = 1;
 
   for( i = 0; i < rigid_transformed_points_.size(); ++i)
   {
@@ -285,19 +320,8 @@ Registration::writeDataToPCD(std::string file_path)
     rgb = ((uint32_t)value) << 16;
     point.rgb = *reinterpret_cast<float*>(&rgb);
 
-    cloud.points.push_back(point);
+    rigid_cloud.points.push_back(point);
     */
-
-
-    point.x = target_points_[i][0];
-    point.y = target_points_[i][1];
-    point.z = target_points_[i][2];
-
-    rgb = ((uint32_t)value) << 8;
-    point.rgb = *reinterpret_cast<float*>(&rgb);
-
-    cloud.points.push_back(point);
-
 
 
     point.x = rigid_transformed_points_[i][0];
@@ -307,14 +331,27 @@ Registration::writeDataToPCD(std::string file_path)
     rgb = ((uint32_t)value);
     point.rgb = *reinterpret_cast<float*>(&rgb);
 
-    cloud.points.push_back(point);
-
-
-
+    rigid_cloud.points.push_back(point);
 
   }
 
-  pcl::io::savePCDFileASCII (file_path + ".pcd", cloud);
+  pcl::copyPointCloud(*target_point_cloud_ptr_,target_cloud);
+
+
+  rgb = ((uint32_t)value) << 8;
+
+  for( i = 0; i < target_cloud.points.size(); ++i)
+  {
+      target_cloud.points[i].rgb = *reinterpret_cast<float*>(&rgb);
+  }
+
+  output_cloud = rigid_cloud + target_cloud;
+
+
+
+
+
+  pcl::io::savePCDFileASCII (file_path + ".pcd", output_cloud);
 
 
 }
