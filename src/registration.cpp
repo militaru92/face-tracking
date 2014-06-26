@@ -103,18 +103,18 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
   transform(1,1) = 0.1;
   transform(2,2) = 0.1;
 
-/*
+
   translation[0] = 1.5;
   translation[1] = 1.0;
   translation[2] = 0.0;
 
-*/
+/*
 
   translation[0] = 0.0;
   translation[1] = 0.0;
   translation[2] = 0.0;
 
-
+*/
 
   readOBJFile(source_points_path,source_points_);
 
