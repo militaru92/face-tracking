@@ -5,6 +5,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/features/normal_3d.h>
 
 class Registration
 {
@@ -45,6 +46,7 @@ class Registration
     std::vector < Eigen::Vector4d > rigid_transformed_points_;
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr_;
+    pcl::PointCloud<pcl::Normal>::Ptr target_normal_cloud_ptr_;
     pcl::KdTreeFLANN<pcl::PointXYZ> kdtree_;
 
     PositionModel* position_model_;

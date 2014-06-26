@@ -69,7 +69,7 @@ int main(int argc, char** argv)
       registrator.readDataFromOBJFileAndPCDScan(source_path,target_path);
   }
 
-  registrator.calculateRigidTransformation(100);
+  registrator.calculateRigidTransformation(1000);
   registrator.applyRigidTransformation();
   registrator.writeDataToPCD(obj_path);
 

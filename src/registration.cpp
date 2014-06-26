@@ -103,9 +103,17 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
   transform(1,1) = 0.1;
   transform(2,2) = 0.1;
 
+/*
   translation[0] = 1.5;
   translation[1] = 1.0;
   translation[2] = 0.0;
+
+*/
+
+  translation[0] = 0.0;
+  translation[1] = 0.0;
+  translation[2] = 0.0;
+
 
 
   readOBJFile(source_points_path,source_points_);
@@ -116,6 +124,8 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
   pcl::PointCloud<pcl::PointXYZ>::Ptr scan_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
   target_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>);
+  target_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::Normal>);
+
 
   if (pcl::io::loadPCDFile<pcl::PointXYZ> (target_points_path, *scan_cloud) == -1) //* load the file
   {
@@ -132,6 +142,14 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
   pcl::io::savePCDFileASCII("filtered_cloud.pcd", *target_point_cloud_ptr_);
 
   kdtree_.setInputCloud(target_point_cloud_ptr_);
+
+  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
+  normal_estimator.setInputCloud(target_point_cloud_ptr_);
+
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+  normal_estimator.setRadiusSearch(0.1);
+  normal_estimator.compute(*target_normal_cloud_ptr_);
+
 
 
 }
@@ -192,28 +210,23 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
   pcl::PointXYZ search_point;
 
-  Eigen::MatrixXd J(source_points_.size(),4), JJ,J_transpose;
-  Eigen::VectorXd y[3];
-  Eigen::Vector4d solutions[3];
+  Eigen::MatrixXd JJ, J_transpose, J;
+  Eigen::VectorXd y( 3 * source_points_.size());
+  Eigen::VectorXd solutions;
 
-  Eigen::Matrix3d current_iteration_rotation;
-  Eigen::Vector3d current_iteration_translation;
+  Eigen::Matrix3d current_iteration_rotation = Eigen::Matrix3d::Identity();
+  Eigen::Vector3d current_iteration_translation, dot_product, cross_product, normal,eigen_point;
 
   std::vector < Eigen::Vector3d > current_iteration_source_points = source_points_;
 
   std::vector < int > point_index(1);
   std::vector < float > point_distance(1);
 
-  for(i = 0; i < 3; ++i)
-  {
-    y[i].resize(source_points_.size());
+  y.resize( 3 * source_points_.size());
 
-  }
+  J = Eigen::MatrixXd::Zero(3 * source_points_.size(), 6);
 
-  for(i = 0; i < current_iteration_source_points.size(); ++i)
-  {
-    J(i,3) = 1.0;
-  }
+
 
 
 
@@ -221,11 +234,11 @@ Registration::calculateRigidTransformation(int number_of_iterations)
   {
 
     PCL_INFO("Iteration %d\n",k);
+
+    j = 0;
+
     for(i = 0; i < current_iteration_source_points.size(); ++i)
     {
-      J(i,0) = current_iteration_source_points[i][0];
-      J(i,1) = current_iteration_source_points[i][1];
-      J(i,2) = current_iteration_source_points[i][2];
 
 
       search_point.x = current_iteration_source_points[i][0];
@@ -233,9 +246,27 @@ Registration::calculateRigidTransformation(int number_of_iterations)
       search_point.z = current_iteration_source_points[i][2];
 
       kdtree_.nearestKSearch(search_point,1,point_index,point_distance);
-      y[0][i] = target_point_cloud_ptr_->points[point_index[0]].x;
-      y[1][i] = target_point_cloud_ptr_->points[point_index[0]].y;
-      y[2][i] = target_point_cloud_ptr_->points[point_index[0]].z;
+
+      normal[0] = target_normal_cloud_ptr_->points[point_index[0]].normal_x;
+      normal[1] = target_normal_cloud_ptr_->points[point_index[0]].normal_y;
+      normal[2] = target_normal_cloud_ptr_->points[point_index[0]].normal_z;
+
+      cross_product = current_iteration_source_points[i].cross(normal);
+
+      y[j] = (target_point_cloud_ptr_->points[point_index[0]].x - search_point.x) * normal[0];
+      y[j+1] = (target_point_cloud_ptr_->points[point_index[0]].y - search_point.y) * normal[1];
+      y[j+2] = (target_point_cloud_ptr_->points[point_index[0]].z - search_point.z) * normal[2];
+
+      J(j,0) = normal[0];
+      J(j,1) = cross_product[0];
+
+      J(j+1,2) = normal[1];
+      J(j+1,3) = cross_product[1];
+
+      J(j+2,4) = normal[2];
+      J(j+2,5) = cross_product[2];
+
+      j = j+3;
 
     }
 
@@ -244,25 +275,27 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
 
 
-    for(i = 0; i < 3; ++i)
-    {
-      solutions[i] = JJ.colPivHouseholderQr().solve(J_transpose * y[i]);
-    }
+    solutions = JJ.colPivHouseholderQr().solve(J_transpose * y);
 
     PCL_INFO("Done with linear Solvers\n");
 
-    for(i = 0; i < 3; ++i)
-    {
-      current_iteration_translation(i) = solutions[i][3];
-    }
+    j = 0;
 
     for(i = 0; i < 3; ++i)
     {
-      for(j = 0; j < 3; ++j)
-      {
-        current_iteration_rotation(i,j) = solutions[i][j];
-      }
+      current_iteration_translation(i) = solutions(j);
+      j = j+2;
     }
+
+    current_iteration_rotation(2,1) = solutions[1];
+    current_iteration_rotation(1,2) = -solutions[1];
+
+    current_iteration_rotation(0,2) = solutions[3];
+    current_iteration_rotation(2,0) = -solutions[3];
+
+    current_iteration_rotation(1,0) = solutions[5];
+    current_iteration_rotation(0,1) = -solutions[5];
+
 
     for( i = 0; i < current_iteration_source_points.size(); ++i)
     {
@@ -278,14 +311,17 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
     resulting_homogeneus_matrix = current_homogeneus_matrix * homogeneus_matrix_;
 
+    /*
     double difference = ( resulting_homogeneus_matrix - homogeneus_matrix_ ).norm();
-/*
+
     if(difference < 0.1)
         break;
 */
     homogeneus_matrix_ = resulting_homogeneus_matrix;
 
   }
+
+
 
 
 
@@ -323,12 +359,12 @@ Registration::writeDataToPCD(std::string file_path)
   uint32_t rgb;
   uint8_t value(255);
 
-  rigid_cloud.width = rigid_transformed_points_.size();
+  rigid_cloud.width = 2 * rigid_transformed_points_.size();
   rigid_cloud.height = 1;
 
   for( i = 0; i < rigid_transformed_points_.size(); ++i)
   {
-    /*
+
     point.x = source_points_[i][0];
     point.y = source_points_[i][1];
     point.z = source_points_[i][2];
@@ -337,7 +373,7 @@ Registration::writeDataToPCD(std::string file_path)
     point.rgb = *reinterpret_cast<float*>(&rgb);
 
     rigid_cloud.points.push_back(point);
-    */
+
 
 
     point.x = rigid_transformed_points_[i][0];
