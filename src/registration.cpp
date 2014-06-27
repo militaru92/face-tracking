@@ -108,8 +108,8 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
   translation[1] = 1.0;
   translation[2] = 0.0;
 
-/*
 
+/*
   translation[0] = 0.0;
   translation[1] = 0.0;
   translation[2] = 0.0;
@@ -222,9 +222,9 @@ Registration::calculateRigidTransformation(int number_of_iterations)
   std::vector < int > point_index(1);
   std::vector < float > point_distance(1);
 
-  y.resize( 3 * source_points_.size());
+  y.resize( source_points_.size());
 
-  J = Eigen::MatrixXd::Zero(3 * source_points_.size(), 6);
+  J = Eigen::MatrixXd::Zero(source_points_.size(), 6);
 
 
 
@@ -235,7 +235,6 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
     PCL_INFO("Iteration %d\n",k);
 
-    j = 0;
 
     for(i = 0; i < current_iteration_source_points.size(); ++i)
     {
@@ -253,20 +252,20 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
       cross_product = current_iteration_source_points[i].cross(normal);
 
-      y[j] = (target_point_cloud_ptr_->points[point_index[0]].x - search_point.x) * normal[0];
-      y[j+1] = (target_point_cloud_ptr_->points[point_index[0]].y - search_point.y) * normal[1];
-      y[j+2] = (target_point_cloud_ptr_->points[point_index[0]].z - search_point.z) * normal[2];
+      eigen_point[0] = target_point_cloud_ptr_->points[point_index[0]].x - search_point.x;
+      eigen_point[1] = target_point_cloud_ptr_->points[point_index[0]].y - search_point.y;
+      eigen_point[2] = target_point_cloud_ptr_->points[point_index[0]].z - search_point.z;
 
-      J(j,0) = normal[0];
-      J(j,1) = cross_product[0];
+      y[i] = eigen_point.dot(normal);
 
-      J(j+1,2) = normal[1];
-      J(j+1,3) = cross_product[1];
+      J(i,0) = normal[0];
+      J(i,1) = normal[1];
+      J(i,2) = normal[2];
+      J(i,3) = cross_product[0];
+      J(i,4) = cross_product[1];
+      J(i,5) = cross_product[2];
 
-      J(j+2,4) = normal[2];
-      J(j+2,5) = cross_product[2];
 
-      j = j+3;
 
     }
 
@@ -279,19 +278,17 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
     PCL_INFO("Done with linear Solvers\n");
 
-    j = 0;
 
     for(i = 0; i < 3; ++i)
     {
-      current_iteration_translation(i) = solutions(j);
-      j = j+2;
+      current_iteration_translation(i) = solutions(i);
     }
 
-    current_iteration_rotation(2,1) = solutions[1];
-    current_iteration_rotation(1,2) = -solutions[1];
+    current_iteration_rotation(2,1) = solutions[3];
+    current_iteration_rotation(1,2) = -solutions[3];
 
-    current_iteration_rotation(0,2) = solutions[3];
-    current_iteration_rotation(2,0) = -solutions[3];
+    current_iteration_rotation(0,2) = solutions[4];
+    current_iteration_rotation(2,0) = -solutions[4];
 
     current_iteration_rotation(1,0) = solutions[5];
     current_iteration_rotation(0,1) = -solutions[5];
@@ -311,12 +308,12 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
     resulting_homogeneus_matrix = current_homogeneus_matrix * homogeneus_matrix_;
 
-    /*
+
     double difference = ( resulting_homogeneus_matrix - homogeneus_matrix_ ).norm();
 
     if(difference < 0.1)
         break;
-*/
+
     homogeneus_matrix_ = resulting_homogeneus_matrix;
 
   }
