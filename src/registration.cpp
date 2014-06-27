@@ -4,6 +4,10 @@ Registration::Registration()
 {
   homogeneus_matrix_ = Eigen::Matrix4d::Identity();
   position_model_ = NULL;
+
+  target_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>);
+  target_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::Normal>);
+
 }
 
 Registration::~Registration()
@@ -32,7 +36,6 @@ Registration::readDataFromOBJFiles(std::string source_points_path, std::string t
   readOBJFile(target_points_path, target_points);
 
 
-  target_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>);
 
   target_point_cloud_ptr_->width = target_points.size();
   target_point_cloud_ptr_->height = 1;
@@ -47,6 +50,15 @@ Registration::readDataFromOBJFiles(std::string source_points_path, std::string t
   }
 
   kdtree_.setInputCloud(target_point_cloud_ptr_);
+
+
+  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+  normal_estimator.setInputCloud(target_point_cloud_ptr_);
+  tree->setInputCloud(target_point_cloud_ptr_);
+  normal_estimator.setSearchMethod (tree);
+  normal_estimator.setKSearch (20);
+  normal_estimator.compute(*target_normal_cloud_ptr_);
 
 
 }
@@ -113,8 +125,8 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
   translation[0] = 0.0;
   translation[1] = 0.0;
   translation[2] = 0.0;
-
 */
+
 
   readOBJFile(source_points_path,source_points_);
 
@@ -123,32 +135,33 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr scan_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-  target_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>);
-  target_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::Normal>);
 
-
-  if (pcl::io::loadPCDFile<pcl::PointXYZ> (target_points_path, *scan_cloud) == -1) //* load the file
+  if (pcl::io::loadPCDFile<pcl::PointXYZ> (target_points_path, *target_point_cloud_ptr_) == -1) //* load the file
   {
     PCL_ERROR("Could not open file %s\n", target_points_path.c_str());
     exit(1);
   }
-
+/*
   pcl::StatisticalOutlierRemoval<pcl::PointXYZ> outliers_filter;
   outliers_filter.setInputCloud(scan_cloud);
   outliers_filter.setMeanK(50);
   outliers_filter.setStddevMulThresh(10);
   outliers_filter.filter(*target_point_cloud_ptr_);
-
+*/
   pcl::io::savePCDFileASCII("filtered_cloud.pcd", *target_point_cloud_ptr_);
 
   kdtree_.setInputCloud(target_point_cloud_ptr_);
 
   pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
-  normal_estimator.setInputCloud(target_point_cloud_ptr_);
-
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-  normal_estimator.setRadiusSearch(0.1);
+
+
+  normal_estimator.setInputCloud(target_point_cloud_ptr_);
+  tree->setInputCloud(target_point_cloud_ptr_);
+  normal_estimator.setSearchMethod (tree);
+  normal_estimator.setKSearch (20);
   normal_estimator.compute(*target_normal_cloud_ptr_);
+
 
 
 
@@ -181,8 +194,6 @@ Registration::getDataFromModel(std::string database_path, std::string output_pat
   position_model_->writeMeanFaceAndRotatedMeanFace(rotation, translation, output_path + "_source.obj", output_path +"_transformed.obj",source_points_,target_points);
 
 
-  target_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZ>);
-
   target_point_cloud_ptr_->width = target_points.size();
   target_point_cloud_ptr_->height = 1;
 
@@ -210,8 +221,8 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
   pcl::PointXYZ search_point;
 
-  Eigen::MatrixXd JJ, J_transpose, J;
-  Eigen::VectorXd y( 3 * source_points_.size());
+  Eigen::MatrixXd JJ, J_transpose, J(source_points_.size(), 6);
+  Eigen::VectorXd y(source_points_.size());
   Eigen::VectorXd solutions;
 
   Eigen::Matrix3d current_iteration_rotation = Eigen::Matrix3d::Identity();
@@ -221,12 +232,6 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
   std::vector < int > point_index(1);
   std::vector < float > point_distance(1);
-
-  y.resize( source_points_.size());
-
-  J = Eigen::MatrixXd::Zero(source_points_.size(), 6);
-
-
 
 
 
@@ -258,12 +263,13 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
       y[i] = eigen_point.dot(normal);
 
-      J(i,0) = normal[0];
-      J(i,1) = normal[1];
-      J(i,2) = normal[2];
-      J(i,3) = cross_product[0];
-      J(i,4) = cross_product[1];
-      J(i,5) = cross_product[2];
+      J(i,0) = cross_product[0];
+      J(i,1) = cross_product[1];
+      J(i,2) = cross_product[2];
+      J(i,3) = normal[0];
+      J(i,4) = normal[1];
+      J(i,5) = normal[2];
+
 
 
 
@@ -279,19 +285,21 @@ Registration::calculateRigidTransformation(int number_of_iterations)
     PCL_INFO("Done with linear Solvers\n");
 
 
+
+    current_iteration_rotation(2,1) = solutions[0];
+    current_iteration_rotation(1,2) = -solutions[0];
+
+    current_iteration_rotation(0,2) = solutions[1];
+    current_iteration_rotation(2,0) = -solutions[1];
+
+    current_iteration_rotation(1,0) = solutions[2];
+    current_iteration_rotation(0,1) = -solutions[2];
+
+
     for(i = 0; i < 3; ++i)
     {
-      current_iteration_translation(i) = solutions(i);
+      current_iteration_translation(i) = solutions(i+3);
     }
-
-    current_iteration_rotation(2,1) = solutions[3];
-    current_iteration_rotation(1,2) = -solutions[3];
-
-    current_iteration_rotation(0,2) = solutions[4];
-    current_iteration_rotation(2,0) = -solutions[4];
-
-    current_iteration_rotation(1,0) = solutions[5];
-    current_iteration_rotation(0,1) = -solutions[5];
 
 
     for( i = 0; i < current_iteration_source_points.size(); ++i)
@@ -308,12 +316,12 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
     resulting_homogeneus_matrix = current_homogeneus_matrix * homogeneus_matrix_;
 
-
+/*
     double difference = ( resulting_homogeneus_matrix - homogeneus_matrix_ ).norm();
 
     if(difference < 0.1)
         break;
-
+*/
     homogeneus_matrix_ = resulting_homogeneus_matrix;
 
   }
@@ -356,7 +364,7 @@ Registration::writeDataToPCD(std::string file_path)
   uint32_t rgb;
   uint8_t value(255);
 
-  rigid_cloud.width = 2 * rigid_transformed_points_.size();
+  rigid_cloud.width = 1 * rigid_transformed_points_.size();
   rigid_cloud.height = 1;
 
   for( i = 0; i < rigid_transformed_points_.size(); ++i)
@@ -369,7 +377,7 @@ Registration::writeDataToPCD(std::string file_path)
     rgb = ((uint32_t)value) << 16;
     point.rgb = *reinterpret_cast<float*>(&rgb);
 
-    rigid_cloud.points.push_back(point);
+    //rigid_cloud.points.push_back(point);
 
 
 
