@@ -35,6 +35,9 @@ class Registration
     void
     writeDataToPCD (std::string file_path);
 
+    void
+    setKdTree (pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr,pcl::PointCloud<pcl::Normal>::Ptr target_normal_cloud_ptr);
+
 
   private:
 
@@ -42,12 +45,16 @@ class Registration
     Eigen::Matrix4d homogeneus_matrix_;
 
     std::vector < Eigen::Vector3d > source_points_;
+    std::vector < Eigen::Vector3d > transformed_points_;
 
     std::vector < Eigen::Vector4d > rigid_transformed_points_;
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr_;
-    pcl::PointCloud<pcl::Normal>::Ptr target_normal_cloud_ptr_;
-    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree_;
+    pcl::search::KdTree<pcl::PointNormal> kdtree_;
+
+
+    pcl::PointCloud<pcl::PointNormal>::Ptr target_point_normal_cloud_ptr_;
+
+
 
     PositionModel* position_model_;
 
