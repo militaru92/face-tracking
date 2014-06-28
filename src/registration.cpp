@@ -28,8 +28,6 @@ Registration::readDataFromOBJFiles(std::string source_points_path, std::string t
   pcl::PointXYZ pcl_point;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::PointCloud<pcl::Normal>::Ptr target_normal_cloud_ptr(new pcl::PointCloud<pcl::Normal>);
-
 
 
   int i;
@@ -54,7 +52,7 @@ Registration::readDataFromOBJFiles(std::string source_points_path, std::string t
     target_point_cloud_ptr->points.push_back(pcl_point);
   }
 
-    setKdTree(target_point_cloud_ptr,target_normal_cloud_ptr);
+    setKdTree(target_point_cloud_ptr);
 
 
 
@@ -110,29 +108,17 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
 
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::PointCloud<pcl::Normal>::Ptr target_normal_cloud_ptr(new pcl::PointCloud<pcl::Normal>);
-
 
 
   transform(0,0) = 0.1;
   transform(1,1) = 0.1;
   transform(2,2) = 0.1;
 
-/*
-  translation[0] = 1.5;
-  translation[1] = 1.0;
-  translation[2] = 0.0;
-
-
-*/
-
 
   readOBJFile(source_points_path,source_points_);
 
   for( i = 0; i < source_points_.size(); ++i)
       source_points_[i] = transform * source_points_[i] + translation;
-
-  //pcl::PointCloud<pcl::PointXYZ>::Ptr scan_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
 
   if (pcl::io::loadPCDFile<pcl::PointXYZ> (target_points_path, *target_point_cloud_ptr) == -1) //* load the file
@@ -149,7 +135,7 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
 */
   //pcl::io::savePCDFileASCII("filtered_cloud.pcd", *target_point_cloud_ptr);
 
-  setKdTree(target_point_cloud_ptr,target_normal_cloud_ptr);
+  setKdTree(target_point_cloud_ptr);
 
 
 
@@ -166,7 +152,7 @@ Registration::getDataFromModel(std::string database_path, std::string output_pat
 
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::PointCloud<pcl::Normal>::Ptr target_normal_cloud_ptr(new pcl::PointCloud<pcl::Normal>);
+
 
 
 
@@ -200,7 +186,7 @@ Registration::getDataFromModel(std::string database_path, std::string output_pat
     target_point_cloud_ptr->points.push_back(point);
   }
 
-  setKdTree(target_point_cloud_ptr, target_normal_cloud_ptr);
+  setKdTree(target_point_cloud_ptr);
 
 
 
@@ -216,20 +202,16 @@ Registration::calculateRigidTransformation(int number_of_iterations)
   PCL_INFO("Size of sources_ and targets_ %d\n",source_points_.size());
   int i,j,k;
 
-  pcl::PointNormal search_point;
+
 
   Eigen::MatrixXd JJ, J_transpose, J(source_points_.size(), 6);
   Eigen::VectorXd y(source_points_.size());
   Eigen::VectorXd solutions;
 
   Eigen::Matrix3d current_iteration_rotation = Eigen::Matrix3d::Identity();
-  Eigen::Vector3d current_iteration_translation, dot_product, cross_product, normal,eigen_point;
+  Eigen::Vector3d current_iteration_translation;
 
   std::vector < Eigen::Vector3d > current_iteration_source_points = source_points_;
-
-  std::vector < int > point_index(1);
-  std::vector < float > point_distance(1);
-
 
 
   for(k = 0; k < number_of_iterations; ++k)
@@ -241,12 +223,19 @@ Registration::calculateRigidTransformation(int number_of_iterations)
     for(i = 0; i < current_iteration_source_points.size(); ++i)
     {
 
+      pcl::PointNormal search_point;
+
 
       search_point.x = current_iteration_source_points[i][0];
       search_point.y = current_iteration_source_points[i][1];
       search_point.z = current_iteration_source_points[i][2];
 
+      std::vector < int > point_index(1);
+      std::vector < float > point_distance(1);
+
       kdtree_.nearestKSearch(search_point,1,point_index,point_distance);
+
+      Eigen::Vector3d cross_product, normal,eigen_point;
 
       normal[0] = target_point_normal_cloud_ptr_->points[point_index[0]].normal_x;
       normal[1] = target_point_normal_cloud_ptr_->points[point_index[0]].normal_y;
@@ -268,21 +257,51 @@ Registration::calculateRigidTransformation(int number_of_iterations)
       J(i,5) = normal[2];
 
 
-
-
     }
 
     J_transpose = J.transpose();
     JJ = J_transpose * J;
 
+    Eigen::MatrixXd right_side = J_transpose * y;
 
 
-    solutions = JJ.colPivHouseholderQr().solve(J_transpose * y);
+
+    solutions = JJ.colPivHouseholderQr().solve(right_side);
 
     PCL_INFO("Done with linear Solvers\n");
 
 
-    current_iteration_rotation = Eigen::AngleAxisd(solutions[0],Eigen::Vector3d::UnitX()) * Eigen::AngleAxisd(solutions[1],Eigen::Vector3d::UnitY()) * Eigen::AngleAxisd(solutions[2],Eigen::Vector3d::UnitZ());
+    current_iteration_rotation = Eigen::AngleAxisd(solutions[0],Eigen::Vector3d::UnitX()) * Eigen::AngleAxisd(solutions[1],Eigen::Vector3d::UnitY()) * Eigen::AngleAxisd(solutions[2],Eigen::Vector3d::UnitZ()) ;
+
+    /*
+    Eigen::Matrix3d R_x,R_y,R_z;
+
+    R_x = Eigen::Matrix3d::Identity();
+    R_y = Eigen::Matrix3d::Identity();
+    R_z = Eigen::Matrix3d::Identity();
+
+
+
+    R_x(1,1) = cos(solutions[0]);
+    R_x(2,2) = cos(solutions[0]);
+
+    R_x(1,2) = -sin(solutions[0]);
+    R_x(2,1) = sin(solutions[0]);
+
+    R_y(0,0) = cos(solutions[1]);
+    R_y(2,2) = cos(solutions[1]);
+
+    R_y(0,2) = sin(solutions[1]);
+    R_y(2,0) = -sin(solutions[1]);
+
+    R_z(0,0) = cos(solutions[2]);
+    R_z(1,1) = cos(solutions[2]);
+
+    R_z(1,0) = sin(solutions[2]);
+    R_z(0,1) = -sin(solutions[2]);
+
+    current_iteration_rotation = R_x * R_y * R_z;
+    */
 
 
     for(i = 0; i < 3; ++i)
@@ -401,18 +420,19 @@ Registration::writeDataToPCD(std::string file_path)
 }
 
 void
-Registration::setKdTree(pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr,pcl::PointCloud<pcl::Normal>::Ptr target_normal_cloud_ptr)
+Registration::setKdTree(pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr)
 {
 
-
+  pcl::PointCloud<pcl::Normal>::Ptr target_normal_cloud_ptr(new pcl::PointCloud<pcl::Normal>);
   pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
 
 
   normal_estimator.setInputCloud(target_point_cloud_ptr);
   tree->setInputCloud(target_point_cloud_ptr);
-  normal_estimator.setSearchMethod (tree);
-  normal_estimator.setKSearch (20);
+  normal_estimator.setSearchMethod(tree);
+  //normal_estimator.setKSearch (5);
+  normal_estimator.setRadiusSearch(0.1);
   normal_estimator.compute(*target_normal_cloud_ptr);
 
   pcl::concatenateFields (*target_point_cloud_ptr, *target_normal_cloud_ptr, *target_point_normal_cloud_ptr_);

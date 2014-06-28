@@ -36,7 +36,7 @@ class Registration
     writeDataToPCD (std::string file_path);
 
     void
-    setKdTree (pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr,pcl::PointCloud<pcl::Normal>::Ptr target_normal_cloud_ptr);
+    setKdTree (pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr);
 
 
   private:
