@@ -118,13 +118,13 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
   transform(1,1) = 0.1;
   transform(2,2) = 0.1;
 
-
+/*
   translation[0] = 1.5;
   translation[1] = 1.0;
   translation[2] = 0.0;
 
 
-
+*/
 
 
   readOBJFile(source_points_path,source_points_);
@@ -282,15 +282,7 @@ Registration::calculateRigidTransformation(int number_of_iterations)
     PCL_INFO("Done with linear Solvers\n");
 
 
-
-    current_iteration_rotation(2,1) = solutions[0];
-    current_iteration_rotation(1,2) = -solutions[0];
-
-    current_iteration_rotation(0,2) = solutions[1];
-    current_iteration_rotation(2,0) = -solutions[1];
-
-    current_iteration_rotation(1,0) = solutions[2];
-    current_iteration_rotation(0,1) = -solutions[2];
+    current_iteration_rotation = Eigen::AngleAxisd(solutions[0],Eigen::Vector3d::UnitX()) * Eigen::AngleAxisd(solutions[1],Eigen::Vector3d::UnitY()) * Eigen::AngleAxisd(solutions[2],Eigen::Vector3d::UnitZ());
 
 
     for(i = 0; i < 3; ++i)
@@ -363,7 +355,7 @@ Registration::writeDataToPCD(std::string file_path)
   uint32_t rgb;
   uint8_t value(255);
 
-  rigid_cloud.width = 1 * rigid_transformed_points_.size();
+  rigid_cloud.width = 2 * rigid_transformed_points_.size();
   rigid_cloud.height = 1;
 
   for( i = 0; i < rigid_transformed_points_.size(); ++i)
@@ -376,13 +368,13 @@ Registration::writeDataToPCD(std::string file_path)
     rgb = ((uint32_t)value) << 16;
     point.rgb = *reinterpret_cast<float*>(&rgb);
 
-    //rigid_cloud.points.push_back(point);
+    rigid_cloud.points.push_back(point);
 
 
 
-    point.x = transformed_points_[i][0];
-    point.y = transformed_points_[i][1];
-    point.z = transformed_points_[i][2];
+    point.x = rigid_transformed_points_[i][0];
+    point.y = rigid_transformed_points_[i][1];
+    point.z = rigid_transformed_points_[i][2];
 
     rgb = ((uint32_t)value);
     point.rgb = *reinterpret_cast<float*>(&rgb);
