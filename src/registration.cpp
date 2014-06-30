@@ -11,7 +11,6 @@ Registration::Registration()
   vis_scan_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
   vis_model_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
   target_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointNormal>);
-  //correspondence_index_ = 0;
 
 }
 
@@ -274,36 +273,6 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
     current_iteration_rotation = Eigen::AngleAxisd(solutions[0],Eigen::Vector3d::UnitX()) * Eigen::AngleAxisd(solutions[1],Eigen::Vector3d::UnitY()) * Eigen::AngleAxisd(solutions[2],Eigen::Vector3d::UnitZ()) ;
 
-    /*
-    Eigen::Matrix3d R_x,R_y,R_z;
-
-    R_x = Eigen::Matrix3d::Identity();
-    R_y = Eigen::Matrix3d::Identity();
-    R_z = Eigen::Matrix3d::Identity();
-
-
-
-    R_x(1,1) = cos(solutions[0]);
-    R_x(2,2) = cos(solutions[0]);
-
-    R_x(1,2) = -sin(solutions[0]);
-    R_x(2,1) = sin(solutions[0]);
-
-    R_y(0,0) = cos(solutions[1]);
-    R_y(2,2) = cos(solutions[1]);
-
-    R_y(0,2) = sin(solutions[1]);
-    R_y(2,0) = -sin(solutions[1]);
-
-    R_z(0,0) = cos(solutions[2]);
-    R_z(1,1) = cos(solutions[2]);
-
-    R_z(1,0) = sin(solutions[2]);
-    R_z(0,1) = -sin(solutions[2]);
-
-    current_iteration_rotation = R_x * R_y * R_z;
-    */
-
 
     for(i = 0; i < 3; ++i)
     {
@@ -362,7 +331,6 @@ Registration::applyRigidTransformation()
     rigid_transformed_points_.push_back(transformed_point);
   }
 
-  //std::cout<< "Transformation matrix\n"<<homogeneus_matrix_<<std::endl<<std::endl;
 
 }
 
@@ -453,56 +421,8 @@ Registration::setKdTree(pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_p
   kdtree_.setInputCloud(target_point_normal_cloud_ptr_);
 
 }
-/*
-void
-Registration::keyboardEventCallBack (const pcl::visualization::KeyboardEvent &event, void* viewer_pointer)
-{
-  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer = *static_cast<boost::shared_ptr<pcl::visualization::PCLVisualizer> *> (viewer_pointer);
-  int i;
-  bool toggle = true;
-  std::string sphere_source("sphere_source"), sphere_target("sphere_target"), line("line");
-
-  viewer->removeAllShapes();
-  viewer->removeAllPointClouds();
-
-  viewer->addPointCloud(vis_source_point_cloud_ptr_,"source");
-  viewer->addPointCloud(vis_scan_point_cloud_ptr_,"scan");
-
-  for( i = 0; i < iteration_correspondences_[correspondence_index_].size(); ++i)
-  {
-      pcl::PointXYZRGB source = vis_source_point_cloud_ptr_->points[i];
-      pcl::PointXYZRGB target = vis_scan_point_cloud_ptr_->points[i];
 
 
-      if(toggle)
-      {
-        viewer->addLine < pcl::PointXYZRGB > (source,target,255,255,0,line + boost::lexical_cast<std::string>(i));
-        viewer->addSphere < pcl::PointXYZRGB > (source,0.5,255,255,0,sphere_source+ boost::lexical_cast<std::string>(i));
-        viewer->addSphere < pcl::PointXYZRGB > (target,0.5,255,255,0,sphere_target+ boost::lexical_cast<std::string>(i));
-      }
-
-      else
-      {
-        viewer->addLine < pcl::PointXYZRGB > (source,target,0,255,255,line + boost::lexical_cast<std::string>(i));
-        viewer->addSphere < pcl::PointXYZRGB > (source,0.5,0,255,255,sphere_source+ boost::lexical_cast<std::string>(i));
-        viewer->addSphere < pcl::PointXYZRGB > (target,0.5,0,255,255,sphere_target+ boost::lexical_cast<std::string>(i));
-      }
-
-      toggle = !toggle;
-
-
-  }
-
-  pcl::PointCloud<pcl::PointXYZRGB> result;
-
-  pcl::transformPointCloud (*vis_source_point_cloud_ptr_,result,homogeneus_matrices_vector_[correspondence_index_]);
-
-  *vis_source_point_cloud_ptr_ = result;
-
-  ++correspondence_index_;
-}
-
-*/
 void
 Registration::visualizeCorrespondences()
 {

@@ -45,15 +45,7 @@ class Registration
 
 
   private:
-/*
-    void
-    keyboardEventCallBack (const pcl::visualization::KeyboardEvent &event, void* viewer_pointer);
 
-
-*/
-
-    //int correspondence_index_;
-    //std::vector < int > shape_indices_;
     std::vector < pcl::Correspondences > iteration_correspondences_vector_;
 
 
