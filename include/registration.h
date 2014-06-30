@@ -18,10 +18,10 @@ class Registration
     readDataFromOBJFiles (std::string source_points_path, std::string target_points_path);
 
     void
-    readOBJFile (std::string file_path, std::vector < Eigen::Vector3d >& points_vector);
+    readOBJFile (std::string file_path, std::vector < Eigen::Vector3d >& points_vector, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation);
 
     void
-    readDataFromOBJFileAndPCDScan(std::string source_points_path, std::string target_points_path);
+    readDataFromOBJFileAndPCDScan(std::string source_points_path, std::string target_points_path, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation);
 
     void
     getDataFromModel (std::string database_path, std::string output_path, Eigen::MatrixX3d rotation, Eigen::Vector3d translation);

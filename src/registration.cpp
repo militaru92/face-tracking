@@ -34,9 +34,9 @@ Registration::readDataFromOBJFiles(std::string source_points_path, std::string t
 
   std::vector < Eigen::Vector3d > target_points;
 
-  readOBJFile(source_points_path,source_points_);
+  readOBJFile(source_points_path,source_points_, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
-  readOBJFile(target_points_path, target_points);
+  readOBJFile(target_points_path, target_points, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
 
 
@@ -59,13 +59,13 @@ Registration::readDataFromOBJFiles(std::string source_points_path, std::string t
 }
 
 void
-Registration::readOBJFile(std::string file_path, std::vector < Eigen::Vector3d >& points_vector)
+Registration::readOBJFile(std::string file_path, std::vector < Eigen::Vector3d >& points_vector, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation)
 {
 
   std::ifstream instream(file_path.c_str());
   std::string line;
 
-  Eigen::Vector3d point;
+  Eigen::Vector3d point, result_point;
 
   if(instream.fail())
   {
@@ -90,7 +90,9 @@ Registration::readOBJFile(std::string file_path, std::vector < Eigen::Vector3d >
     ss >> point[1];
     ss >> point[2];
 
-    points_vector.push_back(point);
+    result_point = transform_matrix * point + translation;
+
+    points_vector.push_back(result_point);
 
 
   }
@@ -99,26 +101,14 @@ Registration::readOBJFile(std::string file_path, std::vector < Eigen::Vector3d >
 }
 
 void
-Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std::string target_points_path)
+Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std::string target_points_path, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation)
 {
 
   int i;
-  Eigen::Matrix3d transform = Eigen::Matrix3d::Identity();
-  Eigen::Vector3d translation = Eigen::Vector3d::Zero();
-
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
-
-  transform(0,0) = 0.1;
-  transform(1,1) = 0.1;
-  transform(2,2) = 0.1;
-
-
-  readOBJFile(source_points_path,source_points_);
-
-  for( i = 0; i < source_points_.size(); ++i)
-      source_points_[i] = transform * source_points_[i] + translation;
+  readOBJFile(source_points_path,source_points_, transform_matrix, translation);
 
 
   if (pcl::io::loadPCDFile<pcl::PointXYZ> (target_points_path, *target_point_cloud_ptr) == -1) //* load the file
@@ -414,7 +404,9 @@ Registration::writeDataToPCD(std::string file_path)
 
   output_cloud = rigid_cloud + target_cloud;
 
-  pcl::io::savePCDFileASCII (file_path + ".pcd", output_cloud);
+  pcl::PCDWriter pcd_writer;
+
+  pcd_writer.writeBinary < pcl::PointXYZRGB > (file_path + ".pcd", output_cloud);
 
 
 }
@@ -431,8 +423,8 @@ Registration::setKdTree(pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_p
   normal_estimator.setInputCloud(target_point_cloud_ptr);
   tree->setInputCloud(target_point_cloud_ptr);
   normal_estimator.setSearchMethod(tree);
-  //normal_estimator.setKSearch (5);
-  normal_estimator.setRadiusSearch(0.1);
+  normal_estimator.setKSearch(10);
+  //normal_estimator.setRadiusSearch(0.10);
   normal_estimator.compute(*target_normal_cloud_ptr);
 
   pcl::concatenateFields (*target_point_cloud_ptr, *target_normal_cloud_ptr, *target_point_normal_cloud_ptr_);

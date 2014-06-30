@@ -32,21 +32,7 @@ int main(int argc, char** argv)
   model.writeModel(obj_path);
   */
 
-  double pi = atan(1);
-
-  Eigen::Vector3d translation = Eigen::Vector3d::Zero(),axis;
-  Eigen::Matrix3d rotation,cross;
-
-  axis << 1, 1, 1;
-  translation << 0, 0, 0;
-
-  cross << 0, -1, 1,
-           1, 0, -1,
-           -1, 0, 1;
-
-  rotation = cos(pi/3.0) * Eigen::Matrix3d::Identity() + sin(pi/3.0) * cross + (1 - cos(pi/3.0)) * axis * axis.transpose();
-
-  std::cout << "Rotation\n" << rotation << std::endl << std::endl;
+  double pi =  4 * atan(1);
 
   Registration registrator;
 
@@ -59,14 +45,50 @@ int main(int argc, char** argv)
 
   if(pcl::console::find_argument (argc, argv, "-m") >= 0)
   {
+    Eigen::Vector3d translation = Eigen::Vector3d::Zero(),axis;
+    Eigen::Matrix3d rotation,cross;
+
+    axis << 1, 1, 1;
+    translation << 0, 0, 0;
+
+    cross << 0, -1, 1,
+             1, 0, -1,
+            -1, 0, 1;
+
+    rotation = cos(pi/3.0) * Eigen::Matrix3d::Identity() + sin(pi/3.0) * cross + (1 - cos(pi/3.0)) * axis * axis.transpose();
+
+    std::cout << "Rotation\n" << rotation << std::endl << std::endl;
+
     registrator.getDataFromModel(database_path, obj_path, rotation, translation);
   }
 
   if(pcl::console::find_argument (argc, argv, "-p") >= 0)
   {
-      source_path = argv[3];
-      target_path = argv[4];
-      registrator.readDataFromOBJFileAndPCDScan(source_path,target_path);
+    source_path = argv[3];
+    target_path = argv[4];
+
+    Eigen::Matrix3d transform_matrix = Eigen::Matrix3d::Identity();
+    Eigen::Vector3d translation = Eigen::Vector3d::Zero();
+
+    transform_matrix(0,0) = 0.1;
+    transform_matrix(1,1) = 0.1;
+    transform_matrix(2,2) = 0.1;
+
+    transform_matrix = Eigen::AngleAxisd(pi,Eigen::Vector3d::UnitX()) * transform_matrix;
+
+
+
+
+    translation[0] = 1.5;
+    translation[1] = 1.5;
+    translation[2] = 0.125;
+
+
+
+
+
+
+    registrator.readDataFromOBJFileAndPCDScan(source_path,target_path,transform_matrix,translation);
   }
 
   registrator.calculateRigidTransformation(10);
