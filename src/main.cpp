@@ -89,11 +89,14 @@ int main(int argc, char** argv)
 
 
     registrator.readDataFromOBJFileAndPCDScan(source_path,target_path,transform_matrix,translation);
+
   }
 
   registrator.calculateRigidTransformation(10);
   registrator.applyRigidTransformation();
   registrator.writeDataToPCD(obj_path);
+
+  registrator.visualizeCorrespondences();
 
   //model.writeMeanFaceAndRotatedMeanFace(rotation,translation,"Average.obj","Transformed.obj");
 

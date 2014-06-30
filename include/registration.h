@@ -2,10 +2,12 @@
 #define REGISTRATION_H
 
 #include "position_model.h"
+#include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/features/normal_3d.h>
+#include <pcl/visualization/pcl_visualizer.h>
 
 class Registration
 {
@@ -38,11 +40,27 @@ class Registration
     void
     setKdTree (pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr);
 
+    void
+    visualizeCorrespondences ();
+
 
   private:
+/*
+    void
+    keyboardEventCallBack (const pcl::visualization::KeyboardEvent &event, void* viewer_pointer);
+
+
+*/
+
+    //int correspondence_index_;
+    //std::vector < int > shape_indices_;
+    std::vector < pcl::Correspondences > iteration_correspondences_vector_;
+
 
 
     Eigen::Matrix4d homogeneus_matrix_;
+
+    std::vector < Eigen::Matrix4d > homogeneus_matrices_vector_;
 
     std::vector < Eigen::Vector3d > source_points_;
     std::vector < Eigen::Vector3d > transformed_points_;
@@ -50,6 +68,13 @@ class Registration
     std::vector < Eigen::Vector4d > rigid_transformed_points_;
 
     pcl::search::KdTree<pcl::PointNormal> kdtree_;
+
+
+
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vis_source_point_cloud_ptr_;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vis_scan_point_cloud_ptr_;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vis_model_point_cloud_ptr_;
 
 
     pcl::PointCloud<pcl::PointNormal>::Ptr target_point_normal_cloud_ptr_;
