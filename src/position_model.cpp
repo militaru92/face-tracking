@@ -282,25 +282,25 @@ PositionModel::writeModel (std::string path)
 }
 
 void
-PositionModel::writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation_matrix, Eigen::Vector3d translation_vector, std::string mean_path, std::string transformed_path, std::vector < Eigen::Vector3d>& source_points, std::vector < Eigen::Vector3d>& target_points)
+PositionModel::writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation_matrix, Eigen::Vector3d translation_vector, std::string mean_path, std::string transformed_path, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr source_points, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr target_points)
 {
   int i,j;
   std::ofstream ofs_mean_face(mean_path.c_str());
   std::ofstream ofs_transformed_mean_face(transformed_path.c_str());
 
-  Eigen::Vector3d point;
+  pcl::PointXYZRGBNormal point;
   Eigen::Vector3d transformed_point;
 
   for( i = 0; i < mean_face_positions_.rows(); i+=3)
   {
-    point[0] = mean_face_positions_(i);
-    point[1] = mean_face_positions_(i+1);
-    point[2] = mean_face_positions_(i+2);
+    point.x = mean_face_positions_(i);
+    point.y = mean_face_positions_(i+1);
+    point.z = mean_face_positions_(i+2);
 
-    ofs_mean_face << "v " << point[0] << ' ' << point[1] << ' ' << point[2] << std::endl;
+    ofs_mean_face << "v " << point.x << ' ' << point.y << ' ' << point.z << std::endl;
 
-    source_points.push_back(point);
-
+    source_points->push_back(point);
+/*
     point[0] = face_position_model_(i);
     point[1] = face_position_model_(i+1);
     point[2] = face_position_model_(i+2);
@@ -312,6 +312,57 @@ PositionModel::writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation_matrix,
 
 
     ofs_transformed_mean_face << "v " << transformed_point[0] << ' ' << transformed_point[1] << ' ' << transformed_point[2] << std::endl;
+*/
+  }
+
+  std::vector < std::vector < Eigen::Vector3f > > normal_vector(cloud->points.size());
+  std::vector < std::vector < float > > surface_vector(cloud->points.size());
+
+
+  for(i = 0; i < meshes_.size();++i)
+  {
+    Eigen::Vector3f V1,V2;
+    V1 = source_points->points[meshes_[i][1]].getVector3fMap() - source_points->points[meshes_[i][0]].getVector3fMap();
+    V2 = source_points->points[meshes_[i][2]].getVector3fMap() - source_points->points[meshes_[i][0]].getVector3fMap();
+
+    normal = V1.cross(V2);
+
+    float area = 0.5 * normal.norm();
+
+    for(j = 0; j < meshes_[i].size(); ++j)
+    {
+      normal_vector[meshes_[i][j]].push_back(normal);
+      surface_vector[meshes_[i][j]].push_back(area);
+    }
+
+  }
+
+  for( i = 0; i < source_points->points.size(); ++i)
+  {
+    float ratio;
+    Eigen::Vector3d normal_result;
+
+    ratio = surface_vector[i][0] + surface_vector[i][1] + surface_vector[i][2];
+
+    normal_result = ( ( surface_vector[i][0] * normal_vector[i][0] ) + ( ( surface_vector[i][1] * normal_vector[i][1] ) + ( surface_vector[i][2] * normal_vector[i][2] ) ) ) / ratio;
+
+    source_points->points[k].normal_x = normal_result[0];
+    source_points->points[k].normal_y = normal_result[1];
+    source_points->points[k].normal_z = normal_result[2];
+  }
+
+
+  Eigen::Matrix4d homogeneus_transform;
+
+  homogeneus_transform.block(0, 0, 3, 3) = transform_matrix;
+  homogeneus_transform.block(0, 3, 3, 1) = translation;
+  homogeneus_transform.row(3) << 0, 0, 0, 1;
+
+  pcl::transformPointCloudWithNormals(*source_points,*target_points,translation_vector,rotation_matrix);
+
+  for(i = 0; i < target_points->points.size(); ++i)
+  {
+    ofs_transformed_mean_face << "v " << target_points->points[i].x << ' ' << target_points->points[i].y << ' ' << target_points->points[i].z << std::endl;
   }
 
 

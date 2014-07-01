@@ -4,6 +4,7 @@
 #include <cstdlib>
 
 #include <pcl/common/common_headers.h>
+#include <pcl/common/transforms.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
 class PositionModel
@@ -57,7 +58,7 @@ class PositionModel
     //debuging methods
 
     void
-    writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation, Eigen::Vector3d translation, std::string mean_path, std::string transformed_path, std::vector < Eigen::Vector3d>& source_points, std::vector < Eigen::Vector3d>& target_points);
+    writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation, Eigen::Vector3d translation, std::string mean_path, std::string transformed_path, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr source_points, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr target_points);
 
 
 };
