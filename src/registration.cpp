@@ -130,7 +130,7 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
     for( k = 0; k < cloud->points.size(); ++k)
     {
       float ratio;
-      Eigen::Vector3d normal_result;
+      Eigen::Vector3f normal_result;
 
       ratio = surface_vector[k][0] + surface_vector[k][1] + surface_vector[k][2];
 
@@ -162,6 +162,7 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
 
 }
 
+
 void
 Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std::string target_points_path, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation)
 {
@@ -178,14 +179,7 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
     PCL_ERROR("Could not open file %s\n", target_points_path.c_str());
     exit(1);
   }
-/*
-  pcl::StatisticalOutlierRemoval<pcl::PointXYZ> outliers_filter;
-  outliers_filter.setInputCloud(scan_cloud);
-  outliers_filter.setMeanK(50);
-  outliers_filter.setStddevMulThresh(10);
-  outliers_filter.filter(*target_point_cloud_ptr);
-*/
-  //pcl::io::savePCDFileASCII("filtered_cloud.pcd", *target_point_cloud_ptr);
+
 
   setKdTree(target_point_cloud_ptr);
 
@@ -404,6 +398,7 @@ Registration::calculateRigidTransformation(int number_of_iterations)
     if(difference < 0.1)
         break;
 */
+
     homogeneus_matrix_ = resulting_homogeneus_matrix;
 
     //homogeneus_matrices_vector_.push_back(current_homogeneus_matrix);
@@ -416,6 +411,7 @@ Registration::calculateRigidTransformation(int number_of_iterations)
   }
 
 }
+
 
 
 void
@@ -446,37 +442,7 @@ Registration::writeDataToPCD(std::string file_path)
   int i;
   uint32_t rgb;
   uint8_t value(255);
-/*
-  pcl::copyPointCloud(*source_point_normal_cloud_ptr_,initial_cloud);
 
-
-  rgb = ((uint32_t)value) << 16;
-
-  for( i = 0; i < initial_cloud.points.size(); ++i)
-  {
-      initial_cloud.points[i].rgb = *reinterpret_cast<float*>(&rgb);
-  }
-
-  pcl::copyPointCloud(*rigid_transformed_points_ptr_,rigid_cloud);
-
-  rgb = ((uint32_t)value);
-
-  for( i = 0; i < rigid_cloud.points.size(); ++i)
-  {
-      rigid_cloud.points[i].rgb = *reinterpret_cast<float*>(&rgb);
-  }
-
-
-  pcl::copyPointCloud(*target_point_normal_cloud_ptr_,target_cloud);
-
-
-  rgb = ((uint32_t)value) << 8;
-
-  for( i = 0; i < target_cloud.points.size(); ++i)
-  {
-      target_cloud.points[i].rgb = *reinterpret_cast<float*>(&rgb);
-  }
-*/
   output_cloud = *source_point_normal_cloud_ptr_ + (*rigid_transformed_points_ptr_ + *target_point_normal_cloud_ptr_);
 
   pcl::PCDWriter pcd_writer;
@@ -509,38 +475,4 @@ Registration::setKdTree(pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_p
 
 }
 
-/*
-void
-Registration::visualizeCorrespondences()
-{
-  int i;
-  pcl::visualization::PCLVisualizer viewer("3D Viewer");
-  viewer.setBackgroundColor(0, 0, 0);
 
-  viewer.initCameraParameters();
-
-  for(i = 0; i < iteration_correspondences_vector_.size(); ++i)
-  {
-
-    viewer.addPointCloud(vis_source_point_cloud_ptr_,"source");
-    viewer.addPointCloud(vis_scan_point_cloud_ptr_,"scan");
-    viewer.addCorrespondences <pcl::PointXYZRGB> (vis_source_point_cloud_ptr_,vis_scan_point_cloud_ptr_,iteration_correspondences_vector_[i]);
-
-    viewer.spin();
-
-    pcl::PointCloud<pcl::PointXYZRGB> result;
-
-    //pcl::transformPointCloud (*vis_source_point_cloud_ptr_,result,homogeneus_matrices_vector_[i]);
-
-    *vis_source_point_cloud_ptr_ = result;
-
-
-
-    viewer.removeAllShapes();
-    viewer.removeAllPointClouds();
-    viewer.removeCorrespondences();
-
-  }
-
-}
-*/

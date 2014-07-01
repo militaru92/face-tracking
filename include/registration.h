@@ -41,14 +41,11 @@ class Registration
 
     void
     setKdTree (pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr);
-/*
-    void
-    visualizeCorrespondences ();
-*/
+
 
   private:
 
-    //std::vector < pcl::Correspondences > iteration_correspondences_vector_;
+
 
 
 
