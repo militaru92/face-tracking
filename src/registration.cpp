@@ -41,12 +41,12 @@ Registration::readDataFromOBJFiles(std::string source_points_path, std::string t
 }
 
 void
-Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation, bool advance)
+Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation, bool advance, int number_vertices)
 {
 
   std::ifstream instream(file_path.c_str());
   std::string line,value;
-  int k;
+  int i,k;
   size_t index;
 
   pcl::PointXYZRGBNormal point;
@@ -80,6 +80,7 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
 
   }
 
+
   if (advance)
   {
 
@@ -91,31 +92,47 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
       std::getline(instream,line);
     }
 
+
+
     while(line[0] == 'f' && !instream.eof())
     {
-      int mesh[3];
+      int mesh[number_vertices];
       Eigen::Vector3f normal;
 
-      for(k = 0; k < 3; ++k)
+      for(k = 0; k < number_vertices; ++k)
       {
         index = line.find(' ');
         line = line.substr(index+1);
         index = line.find(' ');
         value = line.substr(0,index);
-        mesh[k] = (boost::lexical_cast<int>(value));
+        mesh[k] = (boost::lexical_cast<int>(value) -1);
       }
 
-      Eigen::Vector3f V1,V2;
-
-      V1 = cloud->points[mesh[1]].getVector3fMap() - cloud->points[mesh[0]].getVector3fMap();
-      V2 = cloud->points[mesh[2]].getVector3fMap() - cloud->points[mesh[0]].getVector3fMap();
+      Eigen::Vector3f vector_lines[number_vertices-1];
 
 
-      normal = V1.cross(V2);
+      for( i = 0; i < number_vertices - 1; ++i)
+      {
+        vector_lines[i] = cloud->points[mesh[i+1]].getVector3fMap() - cloud->points[mesh[0]].getVector3fMap();
+      }
 
-      float area = 0.5 * normal.norm();
 
-      for(k = 0; k < 3; ++k)
+
+      float area = 0.0;
+
+      for( i = 0; i < number_vertices - 2; ++i)
+      {
+        normal = vector_lines[i].cross(vector_lines[i+1]);
+        area = area + (0.5 * normal.norm());
+      }
+
+
+
+      normal = vector_lines[0].cross(vector_lines[1]);;
+
+
+
+      for(k = 0; k < number_vertices; ++k)
       {
         normal_vector[mesh[k]].push_back(normal);
         surface_vector[mesh[k]].push_back(area);
@@ -123,9 +140,11 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
 
 
 
+
       std::getline(instream,line);
 
     }
+
 
     for( k = 0; k < cloud->points.size(); ++k)
     {
@@ -151,6 +170,7 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
 
   pcl::PointCloud<pcl::PointXYZRGBNormal> result_point_cloud;
 
+
   pcl::transformPointCloudWithNormals(*cloud,result_point_cloud,homogeneus_transform);
 
   *cloud = result_point_cloud;
@@ -167,11 +187,12 @@ void
 Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std::string target_points_path, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation)
 {
 
-  int i;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
+
   readOBJFile(source_points_path,source_point_normal_cloud_ptr_, transform_matrix, translation);
+
 
 
   if (pcl::io::loadPCDFile<pcl::PointXYZ> (target_points_path, *target_point_cloud_ptr) == -1) //* load the file
@@ -342,9 +363,26 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
 
 
-    viewer.addPointCloud <pcl::PointXYZRGBNormal> (current_iteration_source_points_ptr,"source");
-    viewer.addPointCloud <pcl::PointXYZRGBNormal> (target_point_normal_cloud_ptr_,"scan");
-    viewer.addCorrespondences <pcl::PointXYZRGBNormal> (current_iteration_source_points_ptr,target_point_normal_cloud_ptr_,iteration_correspondences);
+
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr source_vis_ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr target_vis_ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+
+    pcl::copyPointCloud(current_iteration_source_points, *source_vis_ptr);
+
+    pcl::copyPointCloud(*target_point_normal_cloud_ptr_, *target_vis_ptr);
+
+    pcl::PCDWriter pcd_writer;
+
+
+    pcd_writer.writeBinary < pcl::PointXYZRGB > ("test.pcd", *source_vis_ptr);
+
+    viewer.addPointCloud <pcl::PointXYZRGB> (source_vis_ptr,"source");
+    viewer.addPointCloud <pcl::PointXYZRGB> (target_vis_ptr,"scan");
+
+    viewer.addCorrespondences <pcl::PointXYZRGB> (source_vis_ptr, target_vis_ptr, iteration_correspondences);
+
 
     viewer.spin();
 
