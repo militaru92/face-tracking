@@ -46,9 +46,6 @@ class Registration
   private:
 
 
-
-
-
     Eigen::Matrix4d homogeneus_matrix_;
 
 

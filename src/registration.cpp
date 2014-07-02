@@ -46,7 +46,7 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
 
   std::ifstream instream(file_path.c_str());
   std::string line,value;
-  int i,k;
+  int i,j;
   size_t index;
 
   pcl::PointXYZRGBNormal point;
@@ -99,13 +99,13 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
       int mesh[number_vertices];
       Eigen::Vector3f normal;
 
-      for(k = 0; k < number_vertices; ++k)
+      for(j = 0; j < number_vertices; ++j)
       {
         index = line.find(' ');
         line = line.substr(index+1);
         index = line.find(' ');
         value = line.substr(0,index);
-        mesh[k] = (boost::lexical_cast<int>(value) -1);
+        mesh[j] = (boost::lexical_cast<int>(value) -1);
       }
 
       Eigen::Vector3f vector_lines[number_vertices-1];
@@ -132,32 +132,38 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
 
 
 
-      for(k = 0; k < number_vertices; ++k)
+      for(i = 0; i < number_vertices; ++i)
       {
-        normal_vector[mesh[k]].push_back(normal);
-        surface_vector[mesh[k]].push_back(area);
+        normal_vector[mesh[i]].push_back(normal);
+        surface_vector[mesh[i]].push_back(area);
       }
-
-
-
 
       std::getline(instream,line);
 
     }
 
 
-    for( k = 0; k < cloud->points.size(); ++k)
+    for( i = 0; i < cloud->points.size(); ++i)
     {
-      float ratio;
-      Eigen::Vector3f normal_result;
+      float ratio = 0.0;
+      Eigen::Vector3f normal_result = Eigen::Vector3f::Zero();
 
-      ratio = surface_vector[k][0] + surface_vector[k][1] + surface_vector[k][2];
+      for( j = 0; j < normal_vector[i].size(); ++j)
+      {
+        ratio += surface_vector[i][j];
+      }
 
-      normal_result = ( ( surface_vector[k][0] * normal_vector[k][0] ) + ( ( surface_vector[k][1] * normal_vector[k][1] ) + ( surface_vector[k][2] * normal_vector[k][2] ) ) ) / ratio;
+      for( j = 0; j < normal_vector[i].size(); ++j)
+      {
+        normal_result += ( ( surface_vector[i][j] * normal_vector[i][j] ) );
+      }
 
-      cloud->points[k].normal_x = normal_result[0];
-      cloud->points[k].normal_y = normal_result[1];
-      cloud->points[k].normal_z = normal_result[2];
+
+      normal_result /= ratio;
+
+      cloud->points[i].normal_x = normal_result[0];
+      cloud->points[i].normal_y = normal_result[1];
+      cloud->points[i].normal_z = normal_result[2];
     }
 
   }
@@ -269,9 +275,9 @@ Registration::calculateRigidTransformation(int number_of_iterations)
   int i,j;
 
 
-  pcl::visualization::PCLVisualizer viewer("3D Viewer");
-  viewer.setBackgroundColor(0, 0, 0);
-  viewer.initCameraParameters();
+  pcl::visualization::PCLVisualizer visualizer("3D Viewer");
+  visualizer.setBackgroundColor(0, 0, 0);
+  visualizer.initCameraParameters();
 
   uint32_t rgb;
   uint8_t value(255);
@@ -279,10 +285,11 @@ Registration::calculateRigidTransformation(int number_of_iterations)
   rgb = ((uint32_t)value) << 16;
 
 
-  for( i = 0; i < target_point_normal_cloud_ptr_->points.size(); ++i)
+  for( i = 0; i < source_point_normal_cloud_ptr_->points.size(); ++i)
   {
       source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
   }
+
 
 
   rgb = ((uint32_t)value) << 8;
@@ -301,8 +308,9 @@ Registration::calculateRigidTransformation(int number_of_iterations)
   Eigen::Matrix3d current_iteration_rotation = Eigen::Matrix3d::Identity();
   Eigen::Vector3d current_iteration_translation;
 
-  pcl::PointCloud<pcl::PointXYZRGBNormal> current_iteration_source_points = *source_point_normal_cloud_ptr_;
-  pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr current_iteration_source_points_ptr (&current_iteration_source_points);
+  pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr current_iteration_source_points_ptr (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+
+  pcl::copyPointCloud(*source_point_normal_cloud_ptr_, *current_iteration_source_points_ptr);
 
 
   for(j = 0; j < number_of_iterations; ++j)
@@ -313,13 +321,13 @@ Registration::calculateRigidTransformation(int number_of_iterations)
     pcl::Correspondences iteration_correspondences;
 
 
-    for(i = 0; i < current_iteration_source_points.size(); ++i)
+    for(i = 0; i < current_iteration_source_points_ptr->size(); ++i)
     {
 
       pcl::PointXYZRGBNormal search_point;
 
 
-      search_point = current_iteration_source_points.at(i);
+      search_point = current_iteration_source_points_ptr->at(i);
 
       std::vector < int > point_index(1);
       std::vector < float > point_distance(1);
@@ -336,7 +344,7 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
       Eigen::Vector3d aux_vector;
 
-      aux_vector = (current_iteration_source_points[i].getVector3fMap()).cast<double>();
+      aux_vector = (current_iteration_source_points_ptr->at(i).getVector3fMap()).cast<double>();
 
       cross_product = aux_vector.cross(normal);
 
@@ -362,35 +370,22 @@ Registration::calculateRigidTransformation(int number_of_iterations)
     }
 
 
+    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_target(target_point_normal_cloud_ptr_);
+    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_current_source(current_iteration_source_points_ptr);
 
 
-
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr source_vis_ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr target_vis_ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
-
-
-    pcl::copyPointCloud(current_iteration_source_points, *source_vis_ptr);
-
-    pcl::copyPointCloud(*target_point_normal_cloud_ptr_, *target_vis_ptr);
-
-    pcl::PCDWriter pcd_writer;
+    visualizer.addPointCloud < pcl::PointXYZRGBNormal > (current_iteration_source_points_ptr, rgb_cloud_current_source, "source");
+    visualizer.addPointCloud < pcl::PointXYZRGBNormal > (target_point_normal_cloud_ptr_, rgb_cloud_target, "scan");
+    visualizer.addCorrespondences <pcl::PointXYZRGBNormal> (current_iteration_source_points_ptr, target_point_normal_cloud_ptr_, iteration_correspondences);
 
 
-    pcd_writer.writeBinary < pcl::PointXYZRGB > ("test.pcd", *source_vis_ptr);
-
-    viewer.addPointCloud <pcl::PointXYZRGB> (source_vis_ptr,"source");
-    viewer.addPointCloud <pcl::PointXYZRGB> (target_vis_ptr,"scan");
-
-    viewer.addCorrespondences <pcl::PointXYZRGB> (source_vis_ptr, target_vis_ptr, iteration_correspondences);
+    visualizer.spin();
 
 
-    viewer.spin();
+    visualizer.removeAllShapes();
+    visualizer.removeAllPointClouds();
+    visualizer.removeCorrespondences();
 
-
-
-    viewer.removeAllShapes();
-    viewer.removeAllPointClouds();
-    viewer.removeCorrespondences();
 
 
     J_transpose = J.transpose();
@@ -423,9 +418,9 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
     pcl::PointCloud<pcl::PointXYZRGBNormal> result;
 
-    pcl::transformPointCloudWithNormals(current_iteration_source_points,result,current_homogeneus_matrix);
+    pcl::transformPointCloudWithNormals(*current_iteration_source_points_ptr,result,current_homogeneus_matrix);
 
-    current_iteration_source_points = result;
+    *current_iteration_source_points_ptr = result;
 
 
     resulting_homogeneus_matrix = current_homogeneus_matrix * homogeneus_matrix_;
@@ -456,7 +451,10 @@ void
 Registration::applyRigidTransformation()
 {
 
+
+
   pcl::transformPointCloudWithNormals (*source_point_normal_cloud_ptr_,*rigid_transformed_points_ptr_,homogeneus_matrix_);
+
 
   uint32_t rgb;
   uint8_t value(255);

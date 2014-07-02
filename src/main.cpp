@@ -96,7 +96,7 @@ int main(int argc, char** argv)
 
   registrator.writeDataToPCD(obj_path);
 
-  //registrator.visualizeCorrespondences();
+
 
   //model.writeMeanFaceAndRotatedMeanFace(rotation,translation,"Average.obj","Transformed.obj");
 
