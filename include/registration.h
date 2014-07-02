@@ -43,7 +43,12 @@ class Registration
     setKdTree (pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr);
 
 
+
   private:
+
+
+    void
+    mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void);
 
 
     Eigen::Matrix4d homogeneus_matrix_;
