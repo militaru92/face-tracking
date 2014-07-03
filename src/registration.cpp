@@ -105,43 +105,79 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
         line = line.substr(index+1);
         index = line.find(' ');
         value = line.substr(0,index);
-        mesh[j] = (boost::lexical_cast<int>(value) -1);
+        mesh[j] = (boost::lexical_cast<int>(value) - 1);
       }
 
-      Eigen::Vector3d vector_lines[number_vertices-1];
+      Eigen::Vector3d eigen_vector_1,eigen_vector_2;
+
+      int maximum_index = 0;
+      double angle, maximum_angle = 0.0;
 
 
-      for( i = 0; i < number_vertices - 1; ++i)
+
+
+      for( i = number_vertices; i < number_vertices * 2; ++i)
       {
-        vector_lines[i] = cloud->points[mesh[i+1]].getVector3fMap().cast<double>() - cloud->points[mesh[0]].getVector3fMap().cast<double>();
+        eigen_vector_1 = cloud->points[mesh[ (i - 1) % number_vertices ]].getVector3fMap().cast<double>() - cloud->points[mesh[ i % number_vertices ]].getVector3fMap().cast<double>();
+        eigen_vector_2 = cloud->points[mesh[ (i + 1) % number_vertices ]].getVector3fMap().cast<double>() - cloud->points[mesh[ i % number_vertices ]].getVector3fMap().cast<double>();
+
+        eigen_vector_1.normalize();
+        eigen_vector_2.normalize();
+
+        angle = eigen_vector_1.dot(eigen_vector_2);
+
+        angle = acos(angle);
+
+        if(angle > maximum_angle)
+        {
+          maximum_angle = angle;
+          maximum_index = i % number_vertices;
+        }
       }
 
+      Eigen::Vector3d edge,normal_1,normal_2;
 
 
-      double area = 0.0;
+      edge = cloud->points[mesh[ (maximum_index + number_vertices - 2) % number_vertices ]].getVector3fMap().cast<double>() - cloud->points[mesh[ maximum_index ]].getVector3fMap().cast<double>();
+      eigen_vector_1 = cloud->points[mesh[ (maximum_index + number_vertices - 1) % number_vertices ]].getVector3fMap().cast<double>() - cloud->points[mesh[ maximum_index ]].getVector3fMap().cast<double>();
+      eigen_vector_2 = cloud->points[mesh[ (maximum_index + number_vertices + 1) % number_vertices ]].getVector3fMap().cast<double>() - cloud->points[mesh[ maximum_index ]].getVector3fMap().cast<double>();
 
-      for( i = 0; i < number_vertices - 2; ++i)
-      {
-        normal = vector_lines[i].cross(vector_lines[i+1]);
-        area = area + (0.5 * normal.norm());
-      }
+      normal_1 = edge.cross(eigen_vector_1);
+      normal_2 = eigen_vector_2.cross(edge);
+
+      double area_1,area_2;
+
+      area_1 = normal_1.norm() * 0.5;
+      area_2 = normal_2.norm() * 0.5;
+
+      normal_1.normalize();
+      normal_2.normalize();
 
 
+      normal_vector [ mesh [maximum_index] ].push_back(normal_1);
+      normal_vector [ mesh [maximum_index] ].push_back(normal_2);
+      surface_vector[ mesh [maximum_index] ].push_back(area_1);
+      surface_vector[ mesh [maximum_index] ].push_back(area_2);
 
-      normal = vector_lines[0].cross(vector_lines[1]);
-      normal.normalize();
+
+      normal_vector [ mesh [(maximum_index + number_vertices - 2) % number_vertices] ].push_back(normal_1);
+      normal_vector [ mesh [(maximum_index + number_vertices - 2) % number_vertices] ].push_back(normal_2);
+      surface_vector[ mesh [(maximum_index + number_vertices - 2) % number_vertices] ].push_back(area_1);
+      surface_vector[ mesh [(maximum_index + number_vertices - 2) % number_vertices] ].push_back(area_2);
 
 
+      normal_vector [ mesh [(maximum_index + number_vertices - 1) % number_vertices] ].push_back(normal_1);
+      surface_vector[ mesh [(maximum_index + number_vertices - 1) % number_vertices] ].push_back(area_1);
 
-      for(i = 0; i < number_vertices; ++i)
-      {
-        normal_vector[mesh[i]].push_back(normal);
-        surface_vector[mesh[i]].push_back(area);
-      }
+      normal_vector [ mesh [(maximum_index + number_vertices + 1) % number_vertices] ].push_back(normal_2);
+      surface_vector[ mesh [(maximum_index + number_vertices + 1) % number_vertices] ].push_back(area_2);
+
+
 
       std::getline(instream,line);
 
     }
+
 
 
     for( i = 0; i < cloud->points.size(); ++i)
@@ -185,8 +221,9 @@ Registration::readOBJFile(std::string file_path, pcl::PointCloud<pcl::PointXYZRG
 
   pcl::transformPointCloudWithNormals(*cloud,result_point_cloud,homogeneus_transform);
 
-  *cloud = result_point_cloud;
+  pcl::copyPointCloud(result_point_cloud,*cloud);
 
+  PCL_INFO("Warning %lf\n", cloud->at(0).getNormalVector3fMap().cast<double>().norm());
 
 
 
@@ -380,7 +417,7 @@ Registration::calculateRigidTransformation(int number_of_iterations)
       dot_product = source_normal.dot(normal);
 
 
-      if( point_distance[0] < 0.01 )
+      if( point_distance[0] < 0.003 )
       {
 
         if( dot_product > 1.0 / sqrt(2.0) )
@@ -476,7 +513,7 @@ Registration::calculateRigidTransformation(int number_of_iterations)
 
     pcl::transformPointCloudWithNormals(*current_iteration_source_points_ptr,result,current_homogeneus_matrix);
 
-    *current_iteration_source_points_ptr = result;
+    pcl::copyPointCloud(result,*current_iteration_source_points_ptr);
 
 
     resulting_homogeneus_matrix = current_homogeneus_matrix * homogeneus_matrix_;

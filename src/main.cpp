@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 
   }
 
-  registrator.calculateRigidTransformation(10);
+  registrator.calculateRigidTransformation(15);
 
   registrator.applyRigidTransformation();
 
