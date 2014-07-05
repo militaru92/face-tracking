@@ -34,6 +34,8 @@ int main(int argc, char** argv)
 
   double pi =  4 * atan(1);
 
+  double distance_limit = 0.001, angle_limit = pi * 0.25;
+
   Registration registrator;
 
   if(pcl::console::find_argument (argc, argv, "-o") >= 0)
@@ -70,9 +72,9 @@ int main(int argc, char** argv)
     Eigen::Matrix3d transform_matrix = Eigen::Matrix3d::Identity();
     Eigen::Vector3d translation = Eigen::Vector3d::Zero();
 
-    transform_matrix(0,0) = 0.1;
-    transform_matrix(1,1) = 0.1;
-    transform_matrix(2,2) = 0.1;
+    transform_matrix(0,0) = 0.15;
+    transform_matrix(1,1) = 0.15;
+    transform_matrix(2,2) = 0.15;
 
     transform_matrix = Eigen::AngleAxisd(pi,Eigen::Vector3d::UnitX()) * transform_matrix;
 
@@ -83,6 +85,12 @@ int main(int argc, char** argv)
     translation[1] = 1.5;
     translation[2] = 0.125;
 
+    if(argc > 6)
+    {
+      angle_limit = boost::lexical_cast<double>(argv[5]) * pi;
+      distance_limit = boost::lexical_cast<double>(argv[6]);
+    }
+
 
 
 
@@ -90,7 +98,7 @@ int main(int argc, char** argv)
 
   }
 
-  registrator.calculateRigidTransformation(15);
+  registrator.calculateRigidTransformation(15,angle_limit,distance_limit);
 
   registrator.applyRigidTransformation();
 

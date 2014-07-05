@@ -31,7 +31,7 @@ class Registration
     getDataFromModel (std::string database_path, std::string output_path, Eigen::MatrixX3d rotation, Eigen::Vector3d translation);
 
     void
-    calculateRigidTransformation (int number_of_iterations);
+    calculateRigidTransformation (int number_of_iterations, double angle_limit, double distance_limit);
 
     void
     applyRigidTransformation ();

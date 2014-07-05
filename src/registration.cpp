@@ -312,7 +312,7 @@ Registration::getDataFromModel(std::string database_path, std::string output_pat
 }
 
 void
-Registration::calculateRigidTransformation(int number_of_iterations)
+Registration::calculateRigidTransformation(int number_of_iterations, double angle_limit, double distance_limit)
 {
 
   PCL_INFO("In calculate method\n");
@@ -417,10 +417,10 @@ Registration::calculateRigidTransformation(int number_of_iterations)
       dot_product = source_normal.dot(normal);
 
 
-      if( point_distance[0] < 0.003 )
+      if( point_distance[0] < distance_limit )
       {
 
-        if( dot_product > 1.0 / sqrt(2.0) )
+        if( std::acos(dot_product) < angle_limit )
         {
           Eigen::Vector3d aux_vector;
 
