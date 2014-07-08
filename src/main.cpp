@@ -47,21 +47,30 @@ int main(int argc, char** argv)
 
   if(pcl::console::find_argument (argc, argv, "-m") >= 0)
   {
-    Eigen::Vector3d translation = Eigen::Vector3d::Zero(),axis;
-    Eigen::Matrix3d rotation,cross;
 
-    axis << 1, 1, 1;
-    translation << 0, 0, 0;
+    target_path = argv[4];
 
-    cross << 0, -1, 1,
-             1, 0, -1,
-            -1, 0, 1;
+    Eigen::Matrix3d transform_matrix = Eigen::Matrix3d::Identity();
+    Eigen::Vector3d translation = Eigen::Vector3d::Zero();
 
-    rotation = cos(pi/3.0) * Eigen::Matrix3d::Identity() + sin(pi/3.0) * cross + (1 - cos(pi/3.0)) * axis * axis.transpose();
+    transform_matrix(0,0) = 0.15;
+    transform_matrix(1,1) = 0.15;
+    transform_matrix(2,2) = 0.15;
 
-    std::cout << "Rotation\n" << rotation << std::endl << std::endl;
+    transform_matrix = Eigen::AngleAxisd(pi,Eigen::Vector3d::UnitX()) * transform_matrix;
 
-    registrator.getDataFromModel(database_path, obj_path, rotation, translation);
+
+    translation[0] = 1.5;
+    translation[1] = 1.5;
+    translation[2] = 0.125;
+
+    if(argc > 6)
+    {
+      angle_limit = boost::lexical_cast<double>(argv[5]) * pi;
+      distance_limit = boost::lexical_cast<double>(argv[6]);
+    }
+
+    registrator.getDataFromModel(database_path, target_path, transform_matrix, translation);
   }
 
   if(pcl::console::find_argument (argc, argv, "-p") >= 0)
@@ -98,9 +107,7 @@ int main(int argc, char** argv)
 
   }
 
-  registrator.calculateRigidTransformation(15,angle_limit,distance_limit);
-
-  registrator.applyRigidTransformation();
+  registrator.calculateAlternativeTransformations(3,15,angle_limit,distance_limit);
 
   registrator.writeDataToPCD(obj_path);
 

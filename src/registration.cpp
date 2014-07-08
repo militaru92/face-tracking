@@ -5,13 +5,13 @@ Registration::Registration()
   homogeneus_matrix_ = Eigen::Matrix4d::Identity();
   position_model_ = NULL;
 
-  vis_source_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
-  vis_scan_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
-  vis_model_point_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
 
   source_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
   target_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
   rigid_transformed_points_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+  iteration_source_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+
+  visualizer_ptr_.reset(new pcl::visualization::PCLVisualizer("3D Visualizer"));
 
 }
 
@@ -259,7 +259,7 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
 }
 
 void
-Registration::getDataFromModel(std::string database_path, std::string output_path, Eigen::MatrixX3d rotation, Eigen::Vector3d translation)
+Registration::getDataFromModel(std::string database_path, std::string target_points_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation)
 {
   int i;
 
@@ -279,31 +279,181 @@ Registration::getDataFromModel(std::string database_path, std::string output_pat
     position_model_ = new PositionModel;
   }
 
-  position_model_->readDataFromFolders(database_path,150,4);
-  position_model_->calculateMeanFace();
+  position_model_->readDataFromFolders(database_path,150,4,transformation_matrix,translation);
 
-  position_model_->calculateEigenVectors();
-  position_model_->printEigenValues();
-  position_model_->calculateRandomWeights(50,output_path);
-  position_model_->calculateModel();
-  position_model_->writeModel(output_path);
+  eigen_source_points_ = position_model_->calculateMeanFace();
+  PCL_INFO("Done with average face\n");
 
-  position_model_->writeMeanFaceAndRotatedMeanFace(rotation, translation, output_path + "_source.obj", output_path +"_transformed.obj",source_point_normal_cloud_ptr_,target_point_normal_cloud_ptr_);
+  eigenvectors_matrix_ = position_model_->calculateEigenVectors();
+  model_meshes_ = position_model_->getMeshes();
+  PCL_INFO("Done with eigenvectors\n");
 
+  convertEigenToPointCLoud();
 
-  target_point_cloud_ptr->width = target_points.size();
-  target_point_cloud_ptr->height = 1;
+  uint32_t rgb;
+  uint8_t value(255);
 
-  for( i = 0; i < target_points.size(); ++i)
+  rgb = ((uint32_t)value) << 16;
+
+  for( i = 0; i < iteration_source_point_normal_cloud_ptr_->points.size(); ++i)
   {
-    point.x = target_points[i][0];
-    point.y = target_points[i][1];
-    point.z = target_points[i][2];
-
-    target_point_cloud_ptr->points.push_back(point);
+      iteration_source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
   }
 
+  pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_,*source_point_normal_cloud_ptr_);
+
+
+
+  if (pcl::io::loadPCDFile<pcl::PointXYZ> (target_points_path, *target_point_cloud_ptr) == -1) //* load the file
+  {
+    PCL_ERROR("Could not open file %s\n", target_points_path.c_str());
+    exit(1);
+  }
+
+
   setKdTree(target_point_cloud_ptr);
+
+  PCL_INFO("Done with reading from model\n");
+
+
+
+
+
+
+
+}
+
+void
+Registration::convertPointCloudToEigen()
+{
+  int i,j=0;
+
+  for(i = 0; i < iteration_source_point_normal_cloud_ptr_->size(); ++i)
+  {
+    eigen_source_points_[j++] = iteration_source_point_normal_cloud_ptr_->at(i).x;
+    eigen_source_points_[j++] = iteration_source_point_normal_cloud_ptr_->at(i).y;
+    eigen_source_points_[j++] = iteration_source_point_normal_cloud_ptr_->at(i).z;
+  }
+
+}
+
+
+void
+Registration::convertEigenToPointCLoud()
+{
+   pcl::PointXYZRGBNormal pcl_point;
+   int i,j,k;
+
+   for(i = 0; i < eigen_source_points_.rows(); i = i+3)
+   {
+     pcl_point.x = eigen_source_points_[i];
+     pcl_point.y = eigen_source_points_[i+1];
+     pcl_point.z = eigen_source_points_[i+2];
+
+     iteration_source_point_normal_cloud_ptr_->push_back(pcl_point);
+   }
+
+   std::vector < std::vector < Eigen::Vector3d > > normal_vector(iteration_source_point_normal_cloud_ptr_->points.size());
+   std::vector < std::vector < double > > surface_vector(iteration_source_point_normal_cloud_ptr_->points.size());
+
+   for( k = 0; k < model_meshes_.size(); ++k)
+   {
+
+     Eigen::Vector3d eigen_vector_1,eigen_vector_2;
+
+     int maximum_index = 0;
+     int number_vertices = model_meshes_[k].vertices.size();
+     double angle, maximum_angle = 0.0;
+
+
+
+
+     for( i = model_meshes_[k].vertices.size(); i < model_meshes_[k].vertices.size() * 2; ++i)
+     {
+       eigen_vector_1 = iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ (i - 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[ model_meshes_[k].vertices[ i % number_vertices ] - 1].getVector3fMap().cast<double>();
+       eigen_vector_2 = iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ (i + 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ i % number_vertices ] - 1].getVector3fMap().cast<double>();
+
+       eigen_vector_1.normalize();
+       eigen_vector_2.normalize();
+
+       angle = eigen_vector_1.dot(eigen_vector_2);
+
+       angle = acos(angle);
+
+       if(angle > maximum_angle)
+       {
+         maximum_angle = angle;
+         maximum_index = i % number_vertices;
+       }
+     }
+
+     Eigen::Vector3d edge,normal_1,normal_2;
+
+
+     edge = iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ (maximum_index + number_vertices - 2) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ maximum_index ] - 1].getVector3fMap().cast<double>();
+     eigen_vector_1 = iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ (maximum_index + number_vertices - 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ maximum_index ] - 1].getVector3fMap().cast<double>();
+     eigen_vector_2 = iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ (maximum_index + number_vertices + 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ maximum_index ] - 1].getVector3fMap().cast<double>();
+
+     normal_1 = edge.cross(eigen_vector_1);
+     normal_2 = eigen_vector_2.cross(edge);
+
+     double area_1,area_2;
+
+     area_1 = normal_1.norm() * 0.5;
+     area_2 = normal_2.norm() * 0.5;
+
+     normal_1.normalize();
+     normal_2.normalize();
+
+
+     normal_vector [ model_meshes_[k].vertices [maximum_index] - 1 ].push_back(normal_1);
+     normal_vector [ model_meshes_[k].vertices [maximum_index] - 1 ].push_back(normal_2);
+     surface_vector[ model_meshes_[k].vertices [maximum_index] - 1 ].push_back(area_1);
+     surface_vector[ model_meshes_[k].vertices [maximum_index] - 1 ].push_back(area_2);
+
+
+     normal_vector [ model_meshes_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(normal_1);
+     normal_vector [ model_meshes_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(normal_2);
+     surface_vector[ model_meshes_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(area_1);
+     surface_vector[ model_meshes_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(area_2);
+
+
+     normal_vector [ model_meshes_[k].vertices [(maximum_index + number_vertices - 1) % number_vertices] - 1 ].push_back(normal_1);
+     surface_vector[ model_meshes_[k].vertices [(maximum_index + number_vertices - 1) % number_vertices] - 1 ].push_back(area_1);
+
+     normal_vector [ model_meshes_[k].vertices [(maximum_index + number_vertices + 1) % number_vertices] - 1 ].push_back(normal_2);
+     surface_vector[ model_meshes_[k].vertices [(maximum_index + number_vertices + 1) % number_vertices] - 1 ].push_back(area_2);
+
+   }
+
+
+   for( i = 0; i < iteration_source_point_normal_cloud_ptr_->points.size(); ++i)
+   {
+     double ratio = 0.0;
+     Eigen::Vector3d normal_result = Eigen::Vector3d::Zero();
+
+     for( j = 0; j < normal_vector[i].size(); ++j)
+     {
+       ratio += surface_vector[i][j];
+     }
+
+     for( j = 0; j < normal_vector[i].size(); ++j)
+     {
+       normal_result += ( ( surface_vector[i][j] * normal_vector[i][j] ) );
+     }
+
+
+     normal_result /= ratio;
+     normal_result.normalize();
+
+
+
+     iteration_source_point_normal_cloud_ptr_->points[i].normal_x = normal_result[0];
+     iteration_source_point_normal_cloud_ptr_->points[i].normal_y = normal_result[1];
+     iteration_source_point_normal_cloud_ptr_->points[i].normal_z = normal_result[2];
+
+
+   }
 
 
 
@@ -319,9 +469,9 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
   int i,j,k;
 
 
-  pcl::visualization::PCLVisualizer visualizer("3D Viewer");
-  visualizer.setBackgroundColor(0, 0, 0);
-  visualizer.initCameraParameters();
+
+  visualizer_ptr_->setBackgroundColor(0, 0, 0);
+  visualizer_ptr_->initCameraParameters();
 
   //visualizer.registerMouseCallback <Registration>(&Registration::mouseEventOccurred, *this);
 
@@ -331,12 +481,12 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 
   rgb = ((uint32_t)value) << 16;
 
-
+/*
   for( i = 0; i < source_point_normal_cloud_ptr_->points.size(); ++i)
   {
       source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
   }
-
+*/
 
 
   rgb = ((uint32_t)value) << 8;
@@ -348,8 +498,8 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
   }
 
 
-  Eigen::MatrixXd J(source_point_normal_cloud_ptr_->points.size(), 6);
-  Eigen::VectorXd y(source_point_normal_cloud_ptr_->points.size());
+  Eigen::MatrixXd J(iteration_source_point_normal_cloud_ptr_->points.size(), 6);
+  Eigen::VectorXd y(iteration_source_point_normal_cloud_ptr_->points.size());
 
 
   Eigen::Matrix3d current_iteration_rotation = Eigen::Matrix3d::Identity();
@@ -357,19 +507,18 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 
   pcl::PointCloud <pcl::PointXYZRGBNormal>::Ptr current_iteration_source_points_ptr (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 
-  pcl::copyPointCloud(*source_point_normal_cloud_ptr_, *current_iteration_source_points_ptr);
+  pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_, *current_iteration_source_points_ptr);
 
 
+  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_source(iteration_source_point_normal_cloud_ptr_);
 
-  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_source(source_point_normal_cloud_ptr_);
 
+  visualizer_ptr_->addPointCloud <pcl::PointXYZRGBNormal> (iteration_source_point_normal_cloud_ptr_,rgb_source, "source");
+  visualizer_ptr_->addPointCloudNormals <pcl::PointXYZRGBNormal> (iteration_source_point_normal_cloud_ptr_, 20, 0.1, "normals");
 
-  visualizer.addPointCloud <pcl::PointXYZRGBNormal> (source_point_normal_cloud_ptr_,rgb_source, "source");
-  visualizer.addPointCloudNormals <pcl::PointXYZRGBNormal> (source_point_normal_cloud_ptr_, 20, 0.1, "normals");
+  visualizer_ptr_->spin();
 
-  visualizer.spin();
-
-  visualizer.removeAllPointClouds();
+  visualizer_ptr_->removeAllPointClouds();
 
 
 
@@ -458,17 +607,17 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_current_source(current_iteration_source_points_ptr);
 
 
-    visualizer.addPointCloud < pcl::PointXYZRGBNormal > (current_iteration_source_points_ptr, rgb_cloud_current_source, "source");
-    visualizer.addPointCloud < pcl::PointXYZRGBNormal > (target_point_normal_cloud_ptr_, rgb_cloud_target, "scan");
-    visualizer.addCorrespondences <pcl::PointXYZRGBNormal> (current_iteration_source_points_ptr, target_point_normal_cloud_ptr_, iteration_correspondences);
+    visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (current_iteration_source_points_ptr, rgb_cloud_current_source, "source");
+    visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (target_point_normal_cloud_ptr_, rgb_cloud_target, "scan");
+    visualizer_ptr_->addCorrespondences <pcl::PointXYZRGBNormal> (current_iteration_source_points_ptr, target_point_normal_cloud_ptr_, iteration_correspondences);
 
 
-    visualizer.spin();
+    visualizer_ptr_->spin();
 
 
-    visualizer.removeAllShapes();
-    visualizer.removeAllPointClouds();
-    visualizer.removeCorrespondences();
+    visualizer_ptr_->removeAllShapes();
+    visualizer_ptr_->removeAllPointClouds();
+    visualizer_ptr_->removeCorrespondences();
 
 
     Eigen::MatrixXd J_transpose,JJ, J_filtered(k,6);
@@ -536,10 +685,74 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 
   }
 
+  pcl::copyPointCloud(*current_iteration_source_points_ptr,*iteration_source_point_normal_cloud_ptr_);
+  convertPointCloudToEigen();
+
+}
+
+void
+Registration::calculateNonRigidTransformation()
+{
+
+  Eigen::MatrixXd J,J_transpose,JJ;
+  Eigen::VectorXd d,y,Jy;
+
+  J = eigenvectors_matrix_;
+  J_transpose = J.transpose();
+
+  JJ = J_transpose * J;
+
+  y = eigen_target_points_ - eigen_source_points_;
+
+  Jy = J_transpose * y;
+
+  d = JJ.colPivHouseholderQr().solve(Jy);
+
+  y = J * d;
+
+  eigen_source_points_ += y;
+
+  convertEigenToPointCLoud();
+
+
+  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_target(target_point_normal_cloud_ptr_);
+  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_current_source(iteration_source_point_normal_cloud_ptr_);
+
+
+  visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (iteration_source_point_normal_cloud_ptr_, rgb_cloud_current_source, "source");
+  visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (target_point_normal_cloud_ptr_, rgb_cloud_target, "scan");
+
+
+  visualizer_ptr_->spin();
+
+
+  visualizer_ptr_->removeAllShapes();
+  visualizer_ptr_->removeAllPointClouds();
+  visualizer_ptr_->removeCorrespondences();
+
+
+
+
+}
+
+
+void
+Registration::calculateAlternativeTransformations(int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit)
+{
+  int i;
+
+  for( i = 0; i < number_of_total_iterations; ++i)
+  {
+
+    calculateRigidTransformation(number_of_rigid_iterations,angle_limit,distance_limit);
+    calculateNonRigidTransformation();
+
+  }
 }
 
 
 
+/*
 void
 Registration::applyRigidTransformation()
 {
@@ -562,7 +775,7 @@ Registration::applyRigidTransformation()
 
 
 }
-
+*/
 void
 Registration::writeDataToPCD(std::string file_path)
 {
@@ -572,7 +785,7 @@ Registration::writeDataToPCD(std::string file_path)
   uint32_t rgb;
   uint8_t value(255);
 
-  output_cloud = *source_point_normal_cloud_ptr_ + (*rigid_transformed_points_ptr_ + *target_point_normal_cloud_ptr_);
+  output_cloud = *source_point_normal_cloud_ptr_ + (*iteration_source_point_normal_cloud_ptr_ + *target_point_normal_cloud_ptr_);
 
   pcl::PCDWriter pcd_writer;
 
@@ -601,6 +814,19 @@ Registration::setKdTree(pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_p
   pcl::concatenateFields (*target_point_cloud_ptr, *target_normal_cloud_ptr, *target_point_normal_cloud_ptr_);
 
   kdtree_.setInputCloud(target_point_normal_cloud_ptr_);
+
+  int i,j=0;
+
+  eigen_target_points_.resize(3 * target_point_normal_cloud_ptr_->size());
+
+  for(i = 0; i < target_point_normal_cloud_ptr_->size(); ++i)
+  {
+    eigen_target_points_[j++] = target_point_normal_cloud_ptr_->at(i).x;
+    eigen_target_points_[j++] = target_point_normal_cloud_ptr_->at(i).y;
+    eigen_target_points_[j++] = target_point_normal_cloud_ptr_->at(i).z;
+  }
+
+
 
 }
 

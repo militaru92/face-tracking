@@ -85,6 +85,95 @@ PositionModel::readDataFromFolders (std::string path, int number_samples, int nu
 }
 
 void
+PositionModel::readDataFromFolders (std::string path, int number_samples, int number_vertices, Eigen::Matrix3d transformation_matrix, Eigen::Vector3d translation)
+{
+  std::string tester("Tester_"),full_path,last_part("/Blendshape/shape_0.obj"),line,value;
+  size_t index;
+  int i,j,k;
+  number_faces_ = number_samples;
+
+  for(i = 1; i <= number_samples; ++i)
+  {
+    full_path = path + tester + boost::lexical_cast<std::string>(i) + last_part;
+    std::ifstream ins(full_path.c_str());
+
+    number_points_ = 11510;
+
+    Eigen::VectorXd S(number_points_ * 3);
+
+    if(ins.fail())
+    {
+      PCL_ERROR("Could not open file %s\n", full_path.c_str());
+      exit(1);
+    }
+
+    j = 0;
+
+    while(1)
+    {
+      std::getline(ins,line);
+
+      std::stringstream ss(line);
+      std::string s;
+
+
+      Eigen::Vector3d eigen_point;
+
+      ss >> s;
+      if(s.compare("v") != 0)
+        break;
+
+      ss >> eigen_point[0];
+
+      ss >> eigen_point[1];
+
+      ss >> eigen_point[2];
+
+      eigen_point = transformation_matrix * eigen_point;
+      eigen_point = eigen_point + translation;
+
+      S[j++] = eigen_point[0];
+      S[j++] = eigen_point[1];
+      S[j++] = eigen_point[2];
+
+
+    }
+
+    if(i == 1)
+    {
+      while(line[0] != 'f')
+      {
+        std::getline(ins,line);
+      }
+
+      while(line[0] == 'f' && !ins.eof())
+      {
+        pcl::Vertices mesh;
+
+        for(k = 0; k < number_vertices; ++k)
+        {
+          index = line.find(' ');
+          line = line.substr(index+1);
+          index = line.find('/');
+          value = line.substr(0,index);
+          mesh.vertices.push_back(boost::lexical_cast<u_int32_t>(value));
+        }
+
+        meshes_.push_back(mesh);
+        std::getline(ins,line);
+      }
+    }
+
+    faces_position_cordiantes_.push_back(S);
+
+  }
+
+
+
+}
+
+
+Eigen::VectorXd
 PositionModel::calculateMeanFace ()
 {
   int i;
@@ -98,13 +187,17 @@ PositionModel::calculateMeanFace ()
 
   mean_face_positions_ /= static_cast <double> (number_faces_);
 
+
+
   PCL_INFO("Done with average face\n");
+
+  return mean_face_positions_;
 
 
 }
 
 
-void
+Eigen::MatrixXd
 PositionModel::calculateEigenVectors ()
 {
   Eigen::MatrixXd T(3 * number_points_, number_faces_), T_tT;
@@ -120,6 +213,8 @@ PositionModel::calculateEigenVectors ()
 
   Eigen::EigenSolver <Eigen::MatrixXd> solver(T_tT);
 
+  Eigen::MatrixXd eigenvectors_matrix (T.rows(),solver.eigenvectors().cols());
+
   for(i = 0; i < solver.eigenvalues().rows(); ++i)
   {
     eigenvalues_vector_.push_back((solver.eigenvalues()[i]).real());
@@ -129,9 +224,11 @@ PositionModel::calculateEigenVectors ()
   {
     v = T * ((solver.eigenvectors().col(i)).real());
     v.normalize();
+    eigenvectors_matrix.col(i) = v;
     eigenvectors_vector_.push_back(v);
   }
 
+  return eigenvectors_matrix;
 
 }
 
@@ -384,5 +481,11 @@ PositionModel::writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation_matrix,
 
   ofs_mean_face.close();
   ofs_transformed_mean_face.close();
+}
+
+std::vector <  pcl::Vertices >
+PositionModel::getMeshes()
+{
+  return meshes_;
 }
 
