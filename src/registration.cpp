@@ -282,7 +282,6 @@ Registration::getDataFromModel(std::string database_path, std::string target_poi
   position_model_->readDataFromFolders(database_path,150,4,transformation_matrix,translation);
 
   eigen_source_points_ = position_model_->calculateMeanFace();
-  PCL_INFO("Done with average face\n");
 
   eigenvectors_matrix_ = position_model_->calculateEigenVectors();
   model_meshes_ = position_model_->getMeshes();
@@ -290,17 +289,19 @@ Registration::getDataFromModel(std::string database_path, std::string target_poi
 
   convertEigenToPointCLoud();
 
+  pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_,*source_point_normal_cloud_ptr_);
+
+
   uint32_t rgb;
   uint8_t value(255);
 
-  rgb = ((uint32_t)value) << 16;
+  rgb = ((uint32_t)value) <<16;
 
-  for( i = 0; i < iteration_source_point_normal_cloud_ptr_->points.size(); ++i)
+  for( i = 0; i < source_point_normal_cloud_ptr_->points.size(); ++i)
   {
-      iteration_source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
+      source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
   }
 
-  pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_,*source_point_normal_cloud_ptr_);
 
 
 
@@ -312,7 +313,11 @@ Registration::getDataFromModel(std::string database_path, std::string target_poi
 
 
   setKdTree(target_point_cloud_ptr);
-
+/*
+  position_model_->calculateRandomWeights(50,"test.txt");
+  position_model_->calculateModel();
+  position_model_->writeModel("ver.obj");
+*/
   PCL_INFO("Done with reading from model\n");
 
 
@@ -327,6 +332,8 @@ void
 Registration::convertPointCloudToEigen()
 {
   int i,j=0;
+
+
 
   for(i = 0; i < iteration_source_point_normal_cloud_ptr_->size(); ++i)
   {
@@ -343,6 +350,8 @@ Registration::convertEigenToPointCLoud()
 {
    pcl::PointXYZRGBNormal pcl_point;
    int i,j,k;
+
+   iteration_source_point_normal_cloud_ptr_->clear();
 
    for(i = 0; i < eigen_source_points_.rows(); i = i+3)
    {
@@ -456,8 +465,15 @@ Registration::convertEigenToPointCLoud()
    }
 
 
+   uint32_t rgb;
+   uint8_t value(255);
 
+   rgb = ((uint32_t)value);
 
+   for( i = 0; i < iteration_source_point_normal_cloud_ptr_->points.size(); ++i)
+   {
+       iteration_source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
+   }
 
 }
 
@@ -685,32 +701,53 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 
   }
 
+
   pcl::copyPointCloud(*current_iteration_source_points_ptr,*iteration_source_point_normal_cloud_ptr_);
   convertPointCloudToEigen();
 
 }
 
 void
-Registration::calculateNonRigidTransformation()
+Registration::calculateNonRigidTransformation(double angle_limit, double distance_limit)
 {
 
-  Eigen::MatrixXd J,J_transpose,JJ;
-  Eigen::VectorXd d,y,Jy;
+  pcl::Correspondences correspondences;
 
-  J = eigenvectors_matrix_;
+  correspondences = filterNonRigidCorrespondences(angle_limit,distance_limit);
+
+
+  Eigen::MatrixXd J_transpose,JJ, J(correspondences.size() * 3,eigenvectors_matrix_.cols());
+  Eigen::VectorXd d,Jy,y(correspondences.size() * 3);
+
+  int i;
+
+
+  for( i = 0; i < correspondences.size(); ++i)
+  {
+
+    J.row(i * 3) = eigenvectors_matrix_.row(correspondences[i].index_query * 3);
+    J.row(i * 3 + 1) = eigenvectors_matrix_.row(correspondences[i].index_query * 3 + 1);
+    J.row(i * 3 + 2) = eigenvectors_matrix_.row(correspondences[i].index_query * 3 + 2);
+
+
+    y(i * 3) = target_point_normal_cloud_ptr_->at(correspondences[i].index_match).x - eigen_source_points_(correspondences[i].index_query * 3);
+    y(i * 3 + 1) = target_point_normal_cloud_ptr_->at(correspondences[i].index_match).y - eigen_source_points_(correspondences[i].index_query * 3 + 1);
+    y(i * 3 + 2) = target_point_normal_cloud_ptr_->at(correspondences[i].index_match).z - eigen_source_points_(correspondences[i].index_query * 3 + 2);
+
+
+  }
+
+
   J_transpose = J.transpose();
 
   JJ = J_transpose * J;
 
-  y = eigen_target_points_ - eigen_source_points_;
-
   Jy = J_transpose * y;
+
 
   d = JJ.colPivHouseholderQr().solve(Jy);
 
-  y = J * d;
-
-  eigen_source_points_ += y;
+  eigen_source_points_ += eigenvectors_matrix_ * d;
 
   convertEigenToPointCLoud();
 
@@ -720,7 +757,9 @@ Registration::calculateNonRigidTransformation()
 
 
   visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (iteration_source_point_normal_cloud_ptr_, rgb_cloud_current_source, "source");
-  visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (target_point_normal_cloud_ptr_, rgb_cloud_target, "scan");
+  //visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (target_point_normal_cloud_ptr_, rgb_cloud_target, "scan");
+  //visualizer_ptr_->addCorrespondences <pcl::PointXYZRGBNormal> (iteration_source_point_normal_cloud_ptr_, target_point_normal_cloud_ptr_, correspondences);
+
 
 
   visualizer_ptr_->spin();
@@ -745,7 +784,7 @@ Registration::calculateAlternativeTransformations(int number_of_total_iterations
   {
 
     calculateRigidTransformation(number_of_rigid_iterations,angle_limit,distance_limit);
-    calculateNonRigidTransformation();
+    calculateNonRigidTransformation(angle_limit,distance_limit);
 
   }
 }
@@ -785,7 +824,8 @@ Registration::writeDataToPCD(std::string file_path)
   uint32_t rgb;
   uint8_t value(255);
 
-  output_cloud = *source_point_normal_cloud_ptr_ + (*iteration_source_point_normal_cloud_ptr_ + *target_point_normal_cloud_ptr_);
+  //output_cloud = *source_point_normal_cloud_ptr_ + (*iteration_source_point_normal_cloud_ptr_ + *target_point_normal_cloud_ptr_);
+  output_cloud = *iteration_source_point_normal_cloud_ptr_;
 
   pcl::PCDWriter pcd_writer;
 
@@ -841,5 +881,76 @@ Registration::mouseEventOccurred (const pcl::visualization::MouseEvent &event, v
   }
 }
 
+
+pcl::Correspondences
+Registration::filterNonRigidCorrespondences(double angle_limit, double distance_limit)
+{
+  int i;
+
+  pcl::Correspondences correspondences_vector;
+
+
+
+  for(i = 0; i < iteration_source_point_normal_cloud_ptr_->size(); ++i)
+  {
+
+    pcl::PointXYZRGBNormal search_point;
+
+
+    search_point = iteration_source_point_normal_cloud_ptr_->at(i);
+
+    std::vector < int > point_index(1);
+    std::vector < float > point_distance(1);
+
+    kdtree_.nearestKSearch(search_point,1,point_index,point_distance);
+
+
+
+    Eigen::Vector3d cross_product, normal,eigen_point;
+    Eigen::Vector3d source_normal;
+
+    double dot_product;
+
+    source_normal = search_point.getNormalVector3fMap().cast<double>();
+
+
+    normal[0] = target_point_normal_cloud_ptr_->points[point_index[0]].normal_x;
+    normal[1] = target_point_normal_cloud_ptr_->points[point_index[0]].normal_y;
+    normal[2] = target_point_normal_cloud_ptr_->points[point_index[0]].normal_z;
+
+
+    normal.normalize();
+
+    source_normal.normalize();
+
+    dot_product = source_normal.dot(normal);
+
+
+    if( point_distance[0] < distance_limit )
+    {
+
+      if( std::acos(dot_product) < angle_limit )
+      {
+        Eigen::Vector3d aux_vector;
+
+        aux_vector = (iteration_source_point_normal_cloud_ptr_->at(i).getVector3fMap()).cast<double>();
+
+        cross_product = aux_vector.cross(normal);
+
+        eigen_point = (target_point_normal_cloud_ptr_->at(point_index[0]).getVector3fMap().cast<double>()) - (search_point.getVector3fMap().cast<double>());
+
+        pcl::Correspondence correspondence(i,point_index[0],point_distance[0]);
+
+        correspondences_vector.push_back(correspondence);
+
+
+      }
+    }
+
+
+  }
+
+  return correspondences_vector;
+}
 
 

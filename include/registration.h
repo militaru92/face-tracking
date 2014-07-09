@@ -34,7 +34,7 @@ class Registration
     calculateRigidTransformation (int number_of_iterations, double angle_limit, double distance_limit);
 
     void
-    calculateNonRigidTransformation();
+    calculateNonRigidTransformation(double angle_limit, double distance_limit);
 
     void
     calculateAlternativeTransformations(int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit);
@@ -53,6 +53,9 @@ class Registration
 
     void
     convertEigenToPointCLoud();
+
+    pcl::Correspondences
+    filterNonRigidCorrespondences(double angle_limit, double distance_limit);
 
 
 
