@@ -197,8 +197,8 @@ PositionModel::calculateMeanFace ()
 }
 
 
-Eigen::MatrixXd
-PositionModel::calculateEigenVectors ()
+void
+PositionModel::calculateEigenValuesAndVectors ()
 {
   Eigen::MatrixXd T(3 * number_points_, number_faces_), T_tT;
   int i,j;
@@ -228,7 +228,9 @@ PositionModel::calculateEigenVectors ()
     eigenvectors_vector_.push_back(v);
   }
 
-  return eigenvectors_matrix;
+  eigenvectors_ = eigenvectors_matrix;
+  eigenvalues_ = solver.eigenvalues().real().cast<double>();
+
 
 }
 
@@ -481,6 +483,19 @@ PositionModel::writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation_matrix,
 
   ofs_mean_face.close();
   ofs_transformed_mean_face.close();
+}
+
+
+Eigen::VectorXd
+PositionModel::getEigenValues()
+{
+  return eigenvalues_;
+}
+
+Eigen::MatrixXd
+PositionModel::getEigenVectors()
+{
+  return eigenvectors_;
 }
 
 std::vector <  pcl::Vertices >

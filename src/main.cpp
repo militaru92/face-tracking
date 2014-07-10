@@ -107,7 +107,7 @@ int main(int argc, char** argv)
 
   }
 
-  registrator.calculateAlternativeTransformations(1,15,angle_limit,distance_limit);
+  registrator.calculateAlternativeTransformations(150,4,5,angle_limit,distance_limit);
 
   registrator.writeDataToPCD(obj_path);
 

@@ -34,10 +34,10 @@ class Registration
     calculateRigidTransformation (int number_of_iterations, double angle_limit, double distance_limit);
 
     void
-    calculateNonRigidTransformation(double angle_limit, double distance_limit);
+    calculateNonRigidTransformation(int number_eigenvectors, double angle_limit, double distance_limit);
 
     void
-    calculateAlternativeTransformations(int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit);
+    calculateAlternativeTransformations(int number_eigenvectors, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit);
 
     void
     applyRigidTransformation ();
@@ -89,6 +89,7 @@ class Registration
 
     Eigen::VectorXd eigen_source_points_;
     Eigen::VectorXd eigen_target_points_;
+    Eigen::VectorXd eigenvalues_vector_;
     Eigen::MatrixXd eigenvectors_matrix_;
 
 

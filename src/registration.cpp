@@ -12,6 +12,8 @@ Registration::Registration()
   iteration_source_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 
   visualizer_ptr_.reset(new pcl::visualization::PCLVisualizer("3D Visualizer"));
+  visualizer_ptr_->setBackgroundColor(0, 0, 0);
+  visualizer_ptr_->initCameraParameters();
 
 }
 
@@ -283,8 +285,10 @@ Registration::getDataFromModel(std::string database_path, std::string target_poi
 
   eigen_source_points_ = position_model_->calculateMeanFace();
 
-  eigenvectors_matrix_ = position_model_->calculateEigenVectors();
+  position_model_->calculateEigenValuesAndVectors();
   model_meshes_ = position_model_->getMeshes();
+  eigenvalues_vector_ = position_model_->getEigenValues();
+  eigenvectors_matrix_ = position_model_->getEigenVectors();
   PCL_INFO("Done with eigenvectors\n");
 
   convertEigenToPointCLoud();
@@ -320,9 +324,7 @@ Registration::getDataFromModel(std::string database_path, std::string target_poi
 */
   PCL_INFO("Done with reading from model\n");
 
-
-
-
+  std::cout << "Eigenvectors : " << eigenvectors_matrix_.cols() << std::endl;
 
 
 
@@ -486,8 +488,6 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 
 
 
-  visualizer_ptr_->setBackgroundColor(0, 0, 0);
-  visualizer_ptr_->initCameraParameters();
 
   //visualizer.registerMouseCallback <Registration>(&Registration::mouseEventOccurred, *this);
 
@@ -708,26 +708,35 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 }
 
 void
-Registration::calculateNonRigidTransformation(double angle_limit, double distance_limit)
+Registration::calculateNonRigidTransformation(int number_eigenvectors, double angle_limit, double distance_limit)
 {
+
+  int i;
 
   pcl::Correspondences correspondences;
 
   correspondences = filterNonRigidCorrespondences(angle_limit,distance_limit);
 
 
-  Eigen::MatrixXd J_transpose,JJ, J(correspondences.size() * 3,eigenvectors_matrix_.cols());
+  Eigen::MatrixXd J_transpose,JJ_total, J_point_to_point(correspondences.size() * 3,number_eigenvectors), Reg_diagonal_matrix;
   Eigen::VectorXd d,Jy,y(correspondences.size() * 3);
 
-  int i;
+  Reg_diagonal_matrix = Eigen::MatrixXd::Identity(number_eigenvectors,number_eigenvectors);
+
+  for(i = 0; i < Reg_diagonal_matrix.rows(); ++i)
+  {
+    Reg_diagonal_matrix(i,i) = 1.0 / eigenvalues_vector_[i];
+  }
+
+  std::cout<<"Before for loop\n";
 
 
   for( i = 0; i < correspondences.size(); ++i)
   {
 
-    J.row(i * 3) = eigenvectors_matrix_.row(correspondences[i].index_query * 3);
-    J.row(i * 3 + 1) = eigenvectors_matrix_.row(correspondences[i].index_query * 3 + 1);
-    J.row(i * 3 + 2) = eigenvectors_matrix_.row(correspondences[i].index_query * 3 + 2);
+    J_point_to_point.row(i * 3) = eigenvectors_matrix_.block(correspondences[i].index_query * 3,0,1,number_eigenvectors);
+    J_point_to_point.row(i * 3 + 1) = eigenvectors_matrix_.block(correspondences[i].index_query * 3 + 1,0,1,number_eigenvectors);
+    J_point_to_point.row(i * 3 + 2) = eigenvectors_matrix_.block(correspondences[i].index_query * 3 + 2,0,1,number_eigenvectors);
 
 
     y(i * 3) = target_point_normal_cloud_ptr_->at(correspondences[i].index_match).x - eigen_source_points_(correspondences[i].index_query * 3);
@@ -737,22 +746,26 @@ Registration::calculateNonRigidTransformation(double angle_limit, double distanc
 
   }
 
+  std::cout<<"Before solvever\n";
 
-  J_transpose = J.transpose();
 
-  JJ = J_transpose * J;
+  J_transpose = J_point_to_point.transpose();
+
+  JJ_total = (J_transpose * J_point_to_point) + Reg_diagonal_matrix;
+
 
   Jy = J_transpose * y;
 
 
-  d = JJ.colPivHouseholderQr().solve(Jy);
 
-  eigen_source_points_ += eigenvectors_matrix_ * d;
+  d = JJ_total.colPivHouseholderQr().solve(Jy);
+
+  eigen_source_points_ += eigenvectors_matrix_.block(0,0,eigenvectors_matrix_.rows(),number_eigenvectors) * d;
 
   convertEigenToPointCLoud();
 
 
-  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_target(target_point_normal_cloud_ptr_);
+  //pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_target(target_point_normal_cloud_ptr_);
   pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_current_source(iteration_source_point_normal_cloud_ptr_);
 
 
@@ -776,7 +789,7 @@ Registration::calculateNonRigidTransformation(double angle_limit, double distanc
 
 
 void
-Registration::calculateAlternativeTransformations(int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit)
+Registration::calculateAlternativeTransformations(int number_eigenvectors, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit)
 {
   int i;
 
@@ -784,7 +797,7 @@ Registration::calculateAlternativeTransformations(int number_of_total_iterations
   {
 
     calculateRigidTransformation(number_of_rigid_iterations,angle_limit,distance_limit);
-    calculateNonRigidTransformation(angle_limit,distance_limit);
+    calculateNonRigidTransformation(number_eigenvectors,angle_limit,distance_limit);
 
   }
 }
@@ -818,11 +831,7 @@ Registration::applyRigidTransformation()
 void
 Registration::writeDataToPCD(std::string file_path)
 {
-  pcl::PointCloud < pcl::PointXYZRGBNormal > initial_cloud, rigid_cloud, output_cloud, target_cloud;
-  pcl::PointXYZRGB point;
-  int i;
-  uint32_t rgb;
-  uint8_t value(255);
+  pcl::PointCloud < pcl::PointXYZRGBNormal > output_cloud;
 
   //output_cloud = *source_point_normal_cloud_ptr_ + (*iteration_source_point_normal_cloud_ptr_ + *target_point_normal_cloud_ptr_);
   output_cloud = *iteration_source_point_normal_cloud_ptr_;
@@ -830,6 +839,8 @@ Registration::writeDataToPCD(std::string file_path)
   pcl::PCDWriter pcd_writer;
 
   pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + ".pcd", output_cloud);
+
+  pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + "_source.pcd", *source_point_normal_cloud_ptr_);
 
 
 

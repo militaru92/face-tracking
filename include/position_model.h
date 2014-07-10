@@ -27,8 +27,8 @@ class PositionModel
     Eigen::VectorXd
     calculateMeanFace ();
 
-    Eigen::MatrixXd
-    calculateEigenVectors ();
+    void
+    calculateEigenValuesAndVectors ();
 
     void
     calculateModel ();
@@ -47,6 +47,12 @@ class PositionModel
 
     std::vector <  pcl::Vertices >
     getMeshes();
+
+    Eigen::VectorXd
+    getEigenValues();
+
+    Eigen::MatrixXd
+    getEigenVectors();
 
     //debuging methods
 
@@ -67,6 +73,8 @@ class PositionModel
 
     std::vector <double> weights_vector_;
 
+    Eigen::VectorXd eigenvalues_;
+    Eigen::MatrixXd eigenvectors_;
 
 
 
