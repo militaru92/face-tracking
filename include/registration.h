@@ -34,10 +34,10 @@ class Registration
     calculateRigidTransformation (int number_of_iterations, double angle_limit, double distance_limit);
 
     void
-    calculateNonRigidTransformation(int number_eigenvectors, double angle_limit, double distance_limit);
+    calculateNonRigidTransformation(int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit);
 
     void
-    calculateAlternativeTransformations(int number_eigenvectors, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit);
+    calculateAlternativeTransformations(int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit);
 
     void
     applyRigidTransformation ();

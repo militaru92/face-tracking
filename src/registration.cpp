@@ -708,7 +708,7 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 }
 
 void
-Registration::calculateNonRigidTransformation(int number_eigenvectors, double angle_limit, double distance_limit)
+Registration::calculateNonRigidTransformation(int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit)
 {
 
   int i;
@@ -751,7 +751,7 @@ Registration::calculateNonRigidTransformation(int number_eigenvectors, double an
 
   J_transpose = J_point_to_point.transpose();
 
-  JJ_total = (J_transpose * J_point_to_point) + Reg_diagonal_matrix;
+  JJ_total = (J_transpose * J_point_to_point) + (Reg_diagonal_matrix * reg_weight);
 
 
   Jy = J_transpose * y;
@@ -789,7 +789,7 @@ Registration::calculateNonRigidTransformation(int number_eigenvectors, double an
 
 
 void
-Registration::calculateAlternativeTransformations(int number_eigenvectors, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit)
+Registration::calculateAlternativeTransformations(int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit)
 {
   int i;
 
@@ -797,7 +797,7 @@ Registration::calculateAlternativeTransformations(int number_eigenvectors, int n
   {
 
     calculateRigidTransformation(number_of_rigid_iterations,angle_limit,distance_limit);
-    calculateNonRigidTransformation(number_eigenvectors,angle_limit,distance_limit);
+    calculateNonRigidTransformation(number_eigenvectors,reg_weight,angle_limit,distance_limit);
 
   }
 }
