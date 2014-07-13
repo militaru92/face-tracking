@@ -37,7 +37,7 @@ class Registration
     calculateNonRigidTransformation(int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit);
 
     void
-    calculateAlternativeTransformations(int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit);
+    calculateAlternativeTransformations(int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit, bool debug_weight = true);
 
     void
     applyRigidTransformation ();
@@ -60,7 +60,6 @@ class Registration
 
 
   private:
-
 
     void
     mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void);

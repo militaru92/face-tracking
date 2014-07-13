@@ -324,7 +324,6 @@ Registration::getDataFromModel(std::string database_path, std::string target_poi
 */
   PCL_INFO("Done with reading from model\n");
 
-  std::cout << "Eigenvectors : " << eigenvectors_matrix_.cols() << std::endl;
 
 
 
@@ -558,8 +557,8 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
       std::vector < int > point_index(1);
       std::vector < float > point_distance(1);
 
-      kdtree_.nearestKSearch(search_point,1,point_index,point_distance);
 
+      kdtree_.nearestKSearch(search_point,1,point_index,point_distance);
 
 
       Eigen::Vector3d cross_product, normal,eigen_point;
@@ -582,34 +581,31 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
       dot_product = source_normal.dot(normal);
 
 
-      if( point_distance[0] < distance_limit )
+      if( point_distance[0] < distance_limit && std::acos(dot_product) < angle_limit)
       {
 
-        if( std::acos(dot_product) < angle_limit )
-        {
-          Eigen::Vector3d aux_vector;
+        Eigen::Vector3d aux_vector;
 
-          aux_vector = (current_iteration_source_points_ptr->at(i).getVector3fMap()).cast<double>();
+        aux_vector = (current_iteration_source_points_ptr->at(i).getVector3fMap()).cast<double>();
 
-          cross_product = aux_vector.cross(normal);
+        cross_product = aux_vector.cross(normal);
 
-          eigen_point = (target_point_normal_cloud_ptr_->at(point_index[0]).getVector3fMap().cast<double>()) - (search_point.getVector3fMap().cast<double>());
+        eigen_point = (target_point_normal_cloud_ptr_->at(point_index[0]).getVector3fMap().cast<double>()) - (search_point.getVector3fMap().cast<double>());
 
-          pcl::Correspondence correspondence(i,point_index[0],point_distance[0]);
+        pcl::Correspondence correspondence(i,point_index[0],point_distance[0]);
 
-          iteration_correspondences.push_back(correspondence);
+        iteration_correspondences.push_back(correspondence);
 
-          y[k] = eigen_point.dot(normal);
+        y[k] = eigen_point.dot(normal);
 
-          J(k,0) = cross_product[0];
-          J(k,1) = cross_product[1];
-          J(k,2) = cross_product[2];
-          J(k,3) = normal[0];
-          J(k,4) = normal[1];
-          J(k,5) = normal[2];
+        J(k,0) = cross_product[0];
+        J(k,1) = cross_product[1];
+        J(k,2) = cross_product[2];
+        J(k,3) = normal[0];
+        J(k,4) = normal[1];
+        J(k,5) = normal[2];
 
-          ++k;
-        }
+        ++k;
       }
 
 
@@ -728,7 +724,6 @@ Registration::calculateNonRigidTransformation(int number_eigenvectors, double re
     Reg_diagonal_matrix(i,i) = 1.0 / eigenvalues_vector_[i];
   }
 
-  std::cout<<"Before for loop\n";
 
 
   for( i = 0; i < correspondences.size(); ++i)
@@ -746,7 +741,6 @@ Registration::calculateNonRigidTransformation(int number_eigenvectors, double re
 
   }
 
-  std::cout<<"Before solvever\n";
 
 
   J_transpose = J_point_to_point.transpose();
@@ -789,7 +783,7 @@ Registration::calculateNonRigidTransformation(int number_eigenvectors, double re
 
 
 void
-Registration::calculateAlternativeTransformations(int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit)
+Registration::calculateAlternativeTransformations(int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit, bool debug_weight)
 {
   int i;
 
@@ -797,6 +791,12 @@ Registration::calculateAlternativeTransformations(int number_eigenvectors, doubl
   {
 
     calculateRigidTransformation(number_of_rigid_iterations,angle_limit,distance_limit);
+
+    if(debug_weight)
+    {
+      PCL_INFO("Type the Reg weight\n");
+      std::cin>>reg_weight;
+    }
     calculateNonRigidTransformation(number_eigenvectors,reg_weight,angle_limit,distance_limit);
 
   }

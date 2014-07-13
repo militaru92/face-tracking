@@ -85,10 +85,8 @@ int main(int argc, char** argv)
     transform_matrix(1,1) = 0.15;
     transform_matrix(2,2) = 0.15;
 
+
     transform_matrix = Eigen::AngleAxisd(pi,Eigen::Vector3d::UnitX()) * transform_matrix;
-
-
-
 
     translation[0] = 1.5;
     translation[1] = 1.5;
@@ -107,7 +105,7 @@ int main(int argc, char** argv)
 
   }
 
-  registrator.calculateAlternativeTransformations(50,0.001,4,5,angle_limit,distance_limit);
+  registrator.calculateAlternativeTransformations(50,0.001,10,15,angle_limit,distance_limit,false);
 
   registrator.writeDataToPCD(obj_path);
 
