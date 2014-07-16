@@ -1,4 +1,5 @@
 #include <registration.h>
+#include <camera_grabber.h>
 #include <pcl/console/parse.h>
 
 int main(int argc, char** argv)
@@ -10,10 +11,19 @@ int main(int argc, char** argv)
     exit(1);
   }
 
+  if(pcl::console::find_argument (argc, argv, "-c") >= 0)
+  {
+    std::string xml_file(argv[2]);
+    CameraGrabber grabber;
+    grabber.runCamera(CV_CAP_OPENNI_ASUS,xml_file);
+    return 0;
+  }
+
   std::string database_path,obj_path,source_path,target_path;
 
   database_path = argv[1];
   obj_path = argv[2];
+
 /*
   PositionModel model;
 
