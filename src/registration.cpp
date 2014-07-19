@@ -303,7 +303,7 @@ Registration::getDataFromModel(std::string database_path, std::string target_poi
 
   for( i = 0; i < source_point_normal_cloud_ptr_->points.size(); ++i)
   {
-      source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
+    source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
   }
 
 
@@ -473,7 +473,7 @@ Registration::convertEigenToPointCLoud()
 
    for( i = 0; i < iteration_source_point_normal_cloud_ptr_->points.size(); ++i)
    {
-       iteration_source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
+     iteration_source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
    }
 
 }
@@ -499,7 +499,7 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 /*
   for( i = 0; i < source_point_normal_cloud_ptr_->points.size(); ++i)
   {
-      source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
+    source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
   }
 */
 
@@ -821,7 +821,7 @@ Registration::applyRigidTransformation()
 
   for( int i = 0; i < rigid_transformed_points_ptr_->points.size(); ++i)
   {
-      rigid_transformed_points_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
+    rigid_transformed_points_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
   }
 
 

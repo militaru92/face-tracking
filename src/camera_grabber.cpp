@@ -1,73 +1,106 @@
 #include "camera_grabber.h"
 
+CameraGrabber::CameraGrabber()
+{
+  point_cloud_ptr_.reset(new pcl::PointCloud <pcl::PointXYZRGB >);
+  visualizer_ptr_.reset(new pcl::visualization::PCLVisualizer);
+  visualizer_ptr_->setBackgroundColor(0, 0, 0);
+  visualizer_ptr_->initCameraParameters();
+}
+
 void
 CameraGrabber::runCamera(int device, std::string file_classifier,bool display)
 {
 
   cv::Mat frame;
-  bool flag = true;
+  int i;
 
 
-  if( !video_grabber.open(device) )
+  if( !video_grabber_.open(device) )
   {
-    std::cout<<"Can't detect the camera\n";
+    PCL_ERROR("Can't detect the camera\n");
     exit(-1);
   }
 
-  if( !face_classifier.load( file_classifier) )
+  if( !face_classifier_.load( file_classifier) )
   {
-    std::cout<<"Did not find the XML file\n";
+    PCL_ERROR("Did not find the XML file\n");
     exit(-1);
   }
 
-  while(flag)
+  for(i = 0; i < 10; ++i)
   {
-    video_grabber.grab();
+    video_grabber_.grab();
 
-    video_grabber.retrieve( frame, CV_CAP_OPENNI_GRAY_IMAGE );
+    video_grabber_.retrieve( frame, CV_CAP_OPENNI_GRAY_IMAGE );
 
-    display_frame(frame);
-
-    int c = cv::waitKey(10);
-
-    if((char)c == 'c')
-    {
-      break;
-    }
   }
 
-  if( !flag )
-  {
-    std::cout<<"The camera was disconnected\n";
-    exit(-1);
-  }
+  writePCLPointCloud(frame);
 
 
 
 }
 
 void
-CameraGrabber::display_frame(cv::Mat frame)
+CameraGrabber::getCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &cloud_ptr)
+{
+  int i;
+  pcl::copyPointCloud(*cloud_ptr,*point_cloud_ptr_);
+
+  uint32_t rgb;
+  uint8_t value(255);
+
+  rgb = ((uint32_t)value) <<16;
+
+  for( i = 0; i < cloud_ptr->points.size(); ++i)
+  {
+    point_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
+  }
+
+
+}
+
+void
+CameraGrabber::writePCLPointCloud(cv::Mat frame)
 {
   std::vector<cv::Rect> faces;
   cv::Mat frame_gray;
 
+
   int i;
 
-  //cv::cvtColor(frame, frame_gray, CV_BGR2GRAY);
+  pcl::OpenNIGrabber::Ptr openni_grabber(new pcl::OpenNIGrabber);
+
+  boost::function<void (const pcl::PointCloud<pcl::PointXYZ>::ConstPtr&)> function_grabber =
+    boost::bind (&CameraGrabber::getCloud, this, _1);
+
+  openni_grabber->registerCallback (function_grabber);
+
+
+  openni_grabber->start();
+
+  for(i = 0; i < 3; ++i)
+  {
+    boost::this_thread::sleep (boost::posix_time::seconds (1));
+  }
+
+  openni_grabber->stop();
+
+
+
+
+  visualizer_ptr_->addPointCloud <pcl::PointXYZRGB> (point_cloud_ptr_, "scan");
+
   cv::equalizeHist( frame, frame_gray);
 
-    //-- Detect faces
-  face_classifier.detectMultiScale(frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, cv::Size(30, 30));
+  face_classifier_.detectMultiScale(frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, cv::Size(30, 30));
 
   for(i = 0; i < faces.size(); ++i)
   {
-    cv::Point center(faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5);
-    cv::ellipse(frame, center, cv::Size( faces[i].width*0.5, faces[i].height*0.5), 0, 0, 360, cv::Scalar( 255, 0, 255 ), 4, 8, 0);
+    pcl::PointXYZ center(static_cast<float>(faces[i].x + faces[i].width*0.5), static_cast<float>(faces[i].y + faces[i].height*0.5),0.0);
+    visualizer_ptr_->addSphere(center,static_cast<float>(faces[i].height*0.5),0.0,0.5,0.5,"sphere"+boost::lexical_cast<std::string>(i));
+    visualizer_ptr_->spin();
   }
 
-  cv::imshow("Face", frame);
-
 }
-
-
