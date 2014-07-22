@@ -1,4 +1,4 @@
-#include "camera_grabber.h"
+#include <camera_grabber.h>
 
 CameraGrabber::CameraGrabber()
 {
@@ -36,7 +36,7 @@ CameraGrabber::runCamera(int device, std::string file_classifier,bool display)
 
   }
 
-  writePCLPointCloud(frame);
+  writeMatToPointCloud(frame);
 
 
 
@@ -62,13 +62,16 @@ CameraGrabber::getCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &cloud_pt
 }
 
 void
-CameraGrabber::writePCLPointCloud(cv::Mat frame)
+CameraGrabber::writeMatToPointCloud(cv::Mat frame)
 {
   std::vector<cv::Rect> faces;
   cv::Mat frame_gray;
 
+  int i,j,k;
 
-  int i;
+  uint32_t rgb;
+  uint8_t value(255);
+
 
   pcl::OpenNIGrabber::Ptr openni_grabber(new pcl::OpenNIGrabber);
 
@@ -89,17 +92,41 @@ CameraGrabber::writePCLPointCloud(cv::Mat frame)
 
 
 
-
-  visualizer_ptr_->addPointCloud <pcl::PointXYZRGB> (point_cloud_ptr_, "scan");
-
   cv::equalizeHist( frame, frame_gray);
 
   face_classifier_.detectMultiScale(frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, cv::Size(30, 30));
 
-  for(i = 0; i < faces.size(); ++i)
+  for(k = 0; k < faces.size(); ++k)
   {
-    pcl::PointXYZ center(static_cast<float>(faces[i].x + faces[i].width*0.5), static_cast<float>(faces[i].y + faces[i].height*0.5),0.0);
-    visualizer_ptr_->addSphere(center,static_cast<float>(faces[i].height*0.5),0.0,0.5,0.5,"sphere"+boost::lexical_cast<std::string>(i));
+    pcl::PointXYZRGB center;
+
+    center = point_cloud_ptr_->at(faces[k].x + faces[k].width/2, faces[k].y + faces[k].height/2);
+
+
+    rgb = ((uint32_t)value);
+
+    for(i = 0; i < point_cloud_ptr_->width; ++i)
+    {
+      for(j = 0; j < point_cloud_ptr_->height; ++j)
+      {
+        point_cloud_ptr_->at(i,j).rgb = *reinterpret_cast<float*>(&rgb);
+      }
+    }
+
+    rgb = ((uint32_t)value) << 16;
+
+    for( i = faces[k].x; i < faces[k].x + faces[k].width; ++i)
+    {
+      for( j = faces[k].y; j < faces[k].y + faces[k].height; ++j)
+      {
+        point_cloud_ptr_->at(i,j).rgb = *reinterpret_cast<float*>(&rgb);
+      }
+    }
+
+
+    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb_field(point_cloud_ptr_);
+
+    visualizer_ptr_->addPointCloud <pcl::PointXYZRGB> (point_cloud_ptr_, rgb_field,"scan"+boost::lexical_cast<std::string>(k));
     visualizer_ptr_->spin();
   }
 

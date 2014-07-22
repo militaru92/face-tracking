@@ -2,17 +2,18 @@
 #define CAMERA_GRABBER_H
 
 #include <pcl/common/common_headers.h>
+#include <pcl/common/geometry.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/openni_grabber.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
 #include <cstdlib>
 
-#include "opencv2/opencv.hpp"
+#include <opencv2/opencv.hpp>
 
-#include "opencv2/objdetect/objdetect.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/objdetect/objdetect.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 class CameraGrabber
 {
@@ -35,7 +36,7 @@ class CameraGrabber
     pcl::visualization::PCLVisualizer::Ptr visualizer_ptr_;
 
     void
-    writePCLPointCloud(cv::Mat frame);
+    writeMatToPointCloud(cv::Mat frame);
 
     void
     getCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &cloud);
