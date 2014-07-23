@@ -22,8 +22,10 @@ class CameraGrabber
     CameraGrabber();
 
     void
-    runCamera(int device, std::string file_classifier, bool display = true);
+    setCamera(int device, std::string file_classifier);
 
+    pcl::PointCloud <pcl::PointXYZRGB >::Ptr
+    getPointCloud(std::pair < int, int >& center_coordinates);
 
 
   private:
@@ -34,9 +36,6 @@ class CameraGrabber
     pcl::PointCloud <pcl::PointXYZRGB >::Ptr point_cloud_ptr_;
 
     pcl::visualization::PCLVisualizer::Ptr visualizer_ptr_;
-
-    void
-    writeMatToPointCloud(cv::Mat frame);
 
     void
     getCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &cloud);

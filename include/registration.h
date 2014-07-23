@@ -2,6 +2,7 @@
 #define REGISTRATION_H
 
 #include "position_model.h"
+#include "camera_grabber.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/filters/statistical_outlier_removal.h>
@@ -15,7 +16,6 @@ class Registration
   public:
 
     Registration();
-    ~Registration();
 
     void
     readDataFromOBJFiles (std::string source_points_path, std::string target_points_path);
@@ -28,16 +28,22 @@ class Registration
     readDataFromOBJFileAndPCDScan(std::string source_points_path, std::string target_points_path, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation);
 
     void
-    getDataFromModel (std::string database_path, std::string target_points_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation);
+    getDataFromModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation);
 
     void
-    calculateRigidTransformation (int number_of_iterations, double angle_limit, double distance_limit);
+    readTargetPointCloud (std::string target_points_path);
 
     void
-    calculateNonRigidTransformation(int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit);
+    getTargetPointCloudFromCamera (int device, std::string file_classifier);
 
     void
-    calculateAlternativeTransformations(int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit, bool debug_weight = true);
+    calculateRigidTransformation (int number_of_iterations, double angle_limit, double distance_limit, bool visualize);
+
+    void
+    calculateNonRigidTransformation(int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit, bool visualize);
+
+    void
+    calculateAlternativeTransformations(int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit, bool visualize = false);
 
     void
     applyRigidTransformation ();
@@ -67,11 +73,10 @@ class Registration
 
     Eigen::Matrix4d homogeneus_matrix_;
 
+    std::pair<int,int> center_coordinates_;
+
 
     pcl::search::KdTree<pcl::PointXYZRGBNormal> kdtree_;
-
-
-
 
 
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr source_point_normal_cloud_ptr_;
@@ -81,15 +86,14 @@ class Registration
 
     pcl::visualization::PCLVisualizer::Ptr visualizer_ptr_;
 
-
-    PositionModel* position_model_;
-
     std::vector <  pcl::Vertices > model_meshes_;
 
     Eigen::VectorXd eigen_source_points_;
     Eigen::VectorXd eigen_target_points_;
     Eigen::VectorXd eigenvalues_vector_;
     Eigen::MatrixXd eigenvectors_matrix_;
+
+    Eigen::Vector3d center_point_;
 
 
 

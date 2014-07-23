@@ -3,18 +3,14 @@
 CameraGrabber::CameraGrabber()
 {
   point_cloud_ptr_.reset(new pcl::PointCloud <pcl::PointXYZRGB >);
-  visualizer_ptr_.reset(new pcl::visualization::PCLVisualizer);
-  visualizer_ptr_->setBackgroundColor(0, 0, 0);
-  visualizer_ptr_->initCameraParameters();
+  //visualizer_ptr_.reset(new pcl::visualization::PCLVisualizer);
+  //visualizer_ptr_->setBackgroundColor(0, 0, 0);
+  //visualizer_ptr_->initCameraParameters();
 }
 
 void
-CameraGrabber::runCamera(int device, std::string file_classifier,bool display)
+CameraGrabber::setCamera(int device, std::string file_classifier)
 {
-
-  cv::Mat frame;
-  int i;
-
 
   if( !video_grabber_.open(device) )
   {
@@ -27,17 +23,6 @@ CameraGrabber::runCamera(int device, std::string file_classifier,bool display)
     PCL_ERROR("Did not find the XML file\n");
     exit(-1);
   }
-
-  for(i = 0; i < 10; ++i)
-  {
-    video_grabber_.grab();
-
-    video_grabber_.retrieve( frame, CV_CAP_OPENNI_GRAY_IMAGE );
-
-  }
-
-  writeMatToPointCloud(frame);
-
 
 
 }
@@ -61,16 +46,24 @@ CameraGrabber::getCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &cloud_pt
 
 }
 
-void
-CameraGrabber::writeMatToPointCloud(cv::Mat frame)
+pcl::PointCloud <pcl::PointXYZRGB >::Ptr
+CameraGrabber::getPointCloud(std::pair < int, int >& center_coordinates)
 {
   std::vector<cv::Rect> faces;
-  cv::Mat frame_gray;
+  cv::Mat frame, frame_gray;
 
-  int i,j,k;
+  int i,j;
 
   uint32_t rgb;
   uint8_t value(255);
+
+  for(i = 0; i < 10; ++i)
+  {
+    video_grabber_.grab();
+
+    video_grabber_.retrieve( frame, CV_CAP_OPENNI_GRAY_IMAGE );
+
+  }
 
 
   pcl::OpenNIGrabber::Ptr openni_grabber(new pcl::OpenNIGrabber);
@@ -96,38 +89,40 @@ CameraGrabber::writeMatToPointCloud(cv::Mat frame)
 
   face_classifier_.detectMultiScale(frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, cv::Size(30, 30));
 
-  for(k = 0; k < faces.size(); ++k)
+  if(faces.size() == 0)
   {
-    pcl::PointXYZRGB center;
-
-    center = point_cloud_ptr_->at(faces[k].x + faces[k].width/2, faces[k].y + faces[k].height/2);
-
-
-    rgb = ((uint32_t)value);
-
-    for(i = 0; i < point_cloud_ptr_->width; ++i)
-    {
-      for(j = 0; j < point_cloud_ptr_->height; ++j)
-      {
-        point_cloud_ptr_->at(i,j).rgb = *reinterpret_cast<float*>(&rgb);
-      }
-    }
-
-    rgb = ((uint32_t)value) << 16;
-
-    for( i = faces[k].x; i < faces[k].x + faces[k].width; ++i)
-    {
-      for( j = faces[k].y; j < faces[k].y + faces[k].height; ++j)
-      {
-        point_cloud_ptr_->at(i,j).rgb = *reinterpret_cast<float*>(&rgb);
-      }
-    }
-
-
-    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb_field(point_cloud_ptr_);
-
-    visualizer_ptr_->addPointCloud <pcl::PointXYZRGB> (point_cloud_ptr_, rgb_field,"scan"+boost::lexical_cast<std::string>(k));
-    visualizer_ptr_->spin();
+    PCL_ERROR("No faces detected\n");
+    exit(1);
   }
+
+  pcl::PointXYZRGB center;
+
+  center = point_cloud_ptr_->at(faces[0].x + faces[0].width/2, faces[0].y + faces[0].height/2);
+
+
+  rgb = ((uint32_t)value) << 8;
+
+  for(i = 0; i < point_cloud_ptr_->width; ++i)
+  {
+    for(j = 0; j < point_cloud_ptr_->height; ++j)
+    {
+      point_cloud_ptr_->at(i,j).rgb = *reinterpret_cast<float*>(&rgb);
+    }
+  }
+
+  rgb = ((uint32_t)value) << 16;
+
+  for( i = faces[0].x; i < faces[0].x + faces[0].width; ++i)
+  {
+    for( j = faces[0].y; j < faces[0].y + faces[0].height; ++j)
+    {
+      point_cloud_ptr_->at(i,j).rgb = *reinterpret_cast<float*>(&rgb);
+    }
+  }
+
+  center_coordinates.first = faces[0].x + faces[0].width/2;
+  center_coordinates.second = faces[0].y + faces[0].height/2;
+
+  return point_cloud_ptr_;
 
 }
