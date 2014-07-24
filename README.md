@@ -5,4 +5,6 @@ Type the command : cmake . && make && ./face <path to the Tester directories fro
 
 in order to write the final result for the cloud4.pcd scan in the test_non_rigid.pcd file
 
-Command for testing the camera grabber is: ./face -c <path-to-the-haarcascade_frontalface_alt.xml-file >
+Command for using the Asus Xtion and automatic alignment: ./face <path-to-the-Facewarehouse-DataBase> <name-of-the-output-file-without-extension> <path-to-OpenCV-classifier> 0.166666666 0.001 -c
+
+The last three arguments represent parameters for the filter of the rigid transformation and the option argument to use the 3D Sensor

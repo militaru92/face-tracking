@@ -324,13 +324,12 @@ Registration::getTargetPointCloudFromCamera (int device, std::string file_classi
 
   setKdTree(target_point_cloud_ptr);
 
-  pcl::PointCloud<pcl::PointXYZRGBNormal> point_normal_cloud;
+
+  Eigen::Vector3d translation = target_point_cloud_ptr->at(center_coordinates_.first,center_coordinates_.second).getVector3fMap().cast<double>() - center_point_;
 
 
-  Eigen::Vector3d translation = center_point_ - target_point_cloud_ptr->at(center_coordinates_.first,center_coordinates_.second).getVector3fMap().cast<double>();
-
-  pcl::transformPointCloudWithNormals(*source_point_normal_cloud_ptr_,point_normal_cloud,translation,Eigen::Quaternion<double>::Identity());
-  pcl::copyPointCloud(point_normal_cloud, *source_point_normal_cloud_ptr_);
+  pcl::transformPointCloudWithNormals(*source_point_normal_cloud_ptr_,*iteration_source_point_normal_cloud_ptr_,translation,Eigen::Quaternion<double>::Identity());
+  //pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_, *source_point_normal_cloud_ptr_);
 
   PCL_INFO("Done with camera scanning\n");
 
