@@ -5,15 +5,6 @@
 int main(int argc, char** argv)
 {
 
-/*
-  if(pcl::console::find_argument (argc, argv, "-g") >= 0)
-  {
-    std::string xml_file(argv[2]);
-    CameraGrabber grabber;
-    grabber.runCamera(CV_CAP_OPENNI_ASUS,xml_file);
-    return (0);
-  }
-*/
   std::string database_path,obj_path,source_path,target_path;
 
   database_path = argv[1];
@@ -39,9 +30,9 @@ int main(int argc, char** argv)
     Eigen::Matrix3d transform_matrix = Eigen::Matrix3d::Identity();
     Eigen::Vector3d translation = Eigen::Vector3d::Zero();
 
-    transform_matrix(0,0) = 0.125;
-    transform_matrix(1,1) = 0.125;
-    transform_matrix(2,2) = 0.125;
+    transform_matrix(0,0) = 0.1;
+    transform_matrix(1,1) = 0.1;
+    transform_matrix(2,2) = 0.1;
 
     transform_matrix = Eigen::AngleAxisd(pi,Eigen::Vector3d::UnitX()) * transform_matrix;
 
@@ -56,8 +47,10 @@ int main(int argc, char** argv)
 
     std::string xml_file(argv[3]);
 
-    registrator.getDataFromModel(database_path, transform_matrix, translation);
     registrator.getTargetPointCloudFromCamera(CV_CAP_OPENNI_ASUS,xml_file);
+    registrator.getDataFromModel(database_path, transform_matrix, translation);
+    registrator.alignModel();
+
   }
 
 
@@ -137,7 +130,7 @@ int main(int argc, char** argv)
 
   }
 
-  registrator.calculateAlternativeTransformations(50,0.001,10,15,angle_limit,distance_limit,true);
+  registrator.calculateAlternativeTransformations(50,0.001,10,15,angle_limit,distance_limit,false);
 
   registrator.writeDataToPCD(obj_path);
 

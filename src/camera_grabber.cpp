@@ -3,9 +3,6 @@
 CameraGrabber::CameraGrabber()
 {
   point_cloud_ptr_.reset(new pcl::PointCloud <pcl::PointXYZRGB >);
-  //visualizer_ptr_.reset(new pcl::visualization::PCLVisualizer);
-  //visualizer_ptr_->setBackgroundColor(0, 0, 0);
-  //visualizer_ptr_->initCameraParameters();
 }
 
 void
@@ -14,7 +11,7 @@ CameraGrabber::setCamera(int device, std::string file_classifier)
 
   if( !video_grabber_.open(device) )
   {
-    PCL_ERROR("Can't detect the camera\n");
+    PCL_ERROR("the 3D camera is disconnected\n");
     exit(-1);
   }
 

@@ -325,14 +325,20 @@ Registration::getTargetPointCloudFromCamera (int device, std::string file_classi
   setKdTree(target_point_cloud_ptr);
 
 
-  Eigen::Vector3d translation = target_point_cloud_ptr->at(center_coordinates_.first,center_coordinates_.second).getVector3fMap().cast<double>() - center_point_;
-
-
-  pcl::transformPointCloudWithNormals(*source_point_normal_cloud_ptr_,*iteration_source_point_normal_cloud_ptr_,translation,Eigen::Quaternion<double>::Identity());
-  //pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_, *source_point_normal_cloud_ptr_);
 
   PCL_INFO("Done with camera scanning\n");
 
+}
+
+
+void
+Registration::alignModel ()
+{
+
+  Eigen::Vector3d translation = target_point_normal_cloud_ptr_->at(center_coordinates_.first,center_coordinates_.second).getVector3fMap().cast<double>() - center_point_;
+
+  pcl::transformPointCloudWithNormals(*source_point_normal_cloud_ptr_,*iteration_source_point_normal_cloud_ptr_,translation,Eigen::Quaternion<double>::Identity());
+  //pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_, *source_point_normal_cloud_ptr_);
 }
 
 void
@@ -822,7 +828,7 @@ Registration::writeDataToPCD(std::string file_path)
 
   pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + ".pcd", output_cloud);
 
-  pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + "_source.pcd", *source_point_normal_cloud_ptr_);
+  //pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + "_source.pcd", *source_point_normal_cloud_ptr_);
 
 
 

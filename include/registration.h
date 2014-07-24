@@ -40,13 +40,13 @@ class Registration
     calculateRigidTransformation (int number_of_iterations, double angle_limit, double distance_limit, bool visualize);
 
     void
-    calculateNonRigidTransformation(int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit, bool visualize);
+    calculateNonRigidTransformation (int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit, bool visualize);
 
     void
-    calculateAlternativeTransformations(int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit, bool visualize = false);
+    calculateAlternativeTransformations (int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit, bool visualize = false);
 
     void
-    applyRigidTransformation ();
+    alignModel ();
 
     void
     writeDataToPCD (std::string file_path);
@@ -55,13 +55,13 @@ class Registration
     setKdTree (pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr);
 
     void
-    convertPointCloudToEigen();
+    convertPointCloudToEigen ();
 
     void
-    convertEigenToPointCLoud();
+    convertEigenToPointCLoud ();
 
     pcl::Correspondences
-    filterNonRigidCorrespondences(double angle_limit, double distance_limit);
+    filterNonRigidCorrespondences (double angle_limit, double distance_limit);
 
 
 
