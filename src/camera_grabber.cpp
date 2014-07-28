@@ -11,7 +11,7 @@ CameraGrabber::setCamera(int device, std::string file_classifier)
 
   if( !video_grabber_.open(device) )
   {
-    PCL_ERROR("the 3D camera is disconnected\n");
+    PCL_ERROR("The camera is disconnected\n");
     exit(-1);
   }
 

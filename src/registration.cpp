@@ -4,7 +4,7 @@ Registration::Registration()
 {
   homogeneus_matrix_ = Eigen::Matrix4d::Identity();
 
-  source_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+  original_source_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
   target_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
   rigid_transformed_points_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
   iteration_source_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
@@ -20,7 +20,7 @@ void
 Registration::readDataFromOBJFiles(std::string source_points_path, std::string target_points_path)
 {
 
-  readOBJFile(source_points_path,source_point_normal_cloud_ptr_, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
+  readOBJFile(source_points_path, original_source_point_normal_cloud_ptr_, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
   readOBJFile(target_points_path, target_point_normal_cloud_ptr_, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
@@ -233,7 +233,7 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
   pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
 
-  readOBJFile(source_points_path,source_point_normal_cloud_ptr_, transform_matrix, translation);
+  readOBJFile(source_points_path, original_source_point_normal_cloud_ptr_, transform_matrix, translation);
 
 
   if (pcl::io::loadPCDFile<pcl::PointXYZ> (target_points_path, *target_point_cloud_ptr) == -1) //* load the file
@@ -268,7 +268,7 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
 
   convertEigenToPointCLoud();
 
-  pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_,*source_point_normal_cloud_ptr_);
+  pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_,*original_source_point_normal_cloud_ptr_);
 
 
   uint32_t rgb;
@@ -278,13 +278,13 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
 
   center_point_ = Eigen::Vector3d::Zero();
 
-  for( i = 0; i < source_point_normal_cloud_ptr_->points.size(); ++i)
+  for( i = 0; i < original_source_point_normal_cloud_ptr_->points.size(); ++i)
   {
-    source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
-    center_point_ += source_point_normal_cloud_ptr_->points[i].getVector3fMap().cast<double>();
+    original_source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
+    center_point_ += original_source_point_normal_cloud_ptr_->points[i].getVector3fMap().cast<double>();
   }
 
-  center_point_ /= static_cast<double> (source_point_normal_cloud_ptr_->points.size());
+  center_point_ /= static_cast<double> (original_source_point_normal_cloud_ptr_->points.size());
 
   PCL_INFO("Done with reading from model\n");
 
@@ -337,7 +337,7 @@ Registration::alignModel ()
 
   Eigen::Vector3d translation = target_point_normal_cloud_ptr_->at(center_coordinates_.first,center_coordinates_.second).getVector3fMap().cast<double>() - center_point_;
 
-  pcl::transformPointCloudWithNormals(*source_point_normal_cloud_ptr_,*iteration_source_point_normal_cloud_ptr_,translation,Eigen::Quaternion<double>::Identity());
+  pcl::transformPointCloudWithNormals(*original_source_point_normal_cloud_ptr_,*iteration_source_point_normal_cloud_ptr_,translation,Eigen::Quaternion<double>::Identity());
   //pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_, *source_point_normal_cloud_ptr_);
 }
 
@@ -509,9 +509,9 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
   rgb = ((uint32_t)value) << 16;
 
 /*
-  for( i = 0; i < source_point_normal_cloud_ptr_->points.size(); ++i)
+  for( i = 0; i < original_source_point_normal_cloud_ptr_->points.size(); ++i)
   {
-    source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
+    original_source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*>(&rgb);
   }
 */
 
@@ -627,6 +627,12 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 
 
     PCL_INFO ("Remaining points %d \n",k);
+
+    if(k == 0)
+    {
+      PCL_ERROR("No correspondences found for Rigid Transformation; The initial alignment must be wrong\n");
+      exit(1);
+    }
 
     if(visualize)
     {
@@ -822,7 +828,13 @@ Registration::writeDataToPCD(std::string file_path)
   pcl::PointCloud < pcl::PointXYZRGBNormal > output_cloud;
 
   //output_cloud = *source_point_normal_cloud_ptr_ + (*iteration_source_point_normal_cloud_ptr_ + *target_point_normal_cloud_ptr_);
-  output_cloud = *iteration_source_point_normal_cloud_ptr_;
+  //output_cloud = *iteration_source_point_normal_cloud_ptr_;
+
+  Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
+
+  transform.block(0, 0, 3, 3) = (Eigen::AngleAxisd(4 * atan(1), Eigen::Vector3d::UnitX()) *  Eigen::Matrix3d::Identity());
+
+  pcl::transformPointCloudWithNormals(*iteration_source_point_normal_cloud_ptr_, output_cloud, transform);
 
   pcl::PCDWriter pcd_writer;
 

@@ -79,7 +79,7 @@ class Registration
     pcl::search::KdTree<pcl::PointXYZRGBNormal> kdtree_;
 
 
-    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr source_point_normal_cloud_ptr_;
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr original_source_point_normal_cloud_ptr_;
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr target_point_normal_cloud_ptr_;
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr rigid_transformed_points_ptr_;
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr iteration_source_point_normal_cloud_ptr_;
