@@ -30,9 +30,9 @@ int main(int argc, char** argv)
     Eigen::Matrix3d transform_matrix = Eigen::Matrix3d::Identity();
     Eigen::Vector3d translation = Eigen::Vector3d::Zero();
 
-    transform_matrix(0,0) = 0.1;
-    transform_matrix(1,1) = 0.1;
-    transform_matrix(2,2) = 0.1;
+    transform_matrix(0,0) = 0.12;
+    transform_matrix(1,1) = 0.12;
+    transform_matrix(2,2) = 0.12;
 
     transform_matrix = Eigen::AngleAxisd(pi,Eigen::Vector3d::UnitX()) * transform_matrix;
 
@@ -135,8 +135,6 @@ int main(int argc, char** argv)
   registrator.writeDataToPCD(obj_path);
 
 
-
-  //model.writeMeanFaceAndRotatedMeanFace(rotation,translation,"Average.obj","Transformed.obj");
 
   return (0);
 }

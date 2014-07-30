@@ -10,7 +10,7 @@ Registration::Registration()
   iteration_source_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 
   visualizer_ptr_.reset(new pcl::visualization::PCLVisualizer("3D Visualizer"));
-  visualizer_ptr_->setBackgroundColor(0, 0, 0);
+  visualizer_ptr_->setBackgroundColor(1, 1, 1);
   visualizer_ptr_->initCameraParameters();
 
 }
@@ -252,7 +252,7 @@ Registration::readDataFromOBJFileAndPCDScan(std::string source_points_path, std:
 void
 Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation)
 {
-  int i;
+  int i,j;
 
   PositionModel position_model;
 
@@ -261,7 +261,18 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
   eigen_source_points_ = position_model.calculateMeanFace();
 
   position_model.calculateEigenValuesAndVectors();
-  model_meshes_ = position_model.getMeshes();
+
+  model_mesh_ = position_model.getMeshes();
+
+  debug_model_mesh_ = model_mesh_;
+
+  for(i = 0; i < debug_model_mesh_.size(); ++i)
+  {
+    for(j = 0; j < debug_model_mesh_[i].vertices.size(); ++j)
+    {
+      debug_model_mesh_[i].vertices[j] = debug_model_mesh_[i].vertices[j] - 1;
+    }
+  }
   eigenvalues_vector_ = position_model.getEigenValues();
   eigenvectors_matrix_ = position_model.getEigenVectors();
   PCL_INFO("Done with eigenvectors\n");
@@ -338,6 +349,10 @@ Registration::alignModel ()
   Eigen::Vector3d translation = target_point_normal_cloud_ptr_->at(center_coordinates_.first,center_coordinates_.second).getVector3fMap().cast<double>() - center_point_;
 
   pcl::transformPointCloudWithNormals(*original_source_point_normal_cloud_ptr_,*iteration_source_point_normal_cloud_ptr_,translation,Eigen::Quaternion<double>::Identity());
+
+  pcl::PCDWriter pcd_writer;
+  pcd_writer.writeBinary < pcl::PointXYZRGBNormal > ("model.pcd", *iteration_source_point_normal_cloud_ptr_);
+
   //pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_, *source_point_normal_cloud_ptr_);
 }
 
@@ -378,22 +393,22 @@ Registration::convertEigenToPointCLoud()
    std::vector < std::vector < Eigen::Vector3d > > normal_vector(iteration_source_point_normal_cloud_ptr_->points.size());
    std::vector < std::vector < double > > surface_vector(iteration_source_point_normal_cloud_ptr_->points.size());
 
-   for( k = 0; k < model_meshes_.size(); ++k)
+   for( k = 0; k < model_mesh_.size(); ++k)
    {
 
      Eigen::Vector3d eigen_vector_1,eigen_vector_2;
 
      int maximum_index = 0;
-     int number_vertices = model_meshes_[k].vertices.size();
+     int number_vertices = model_mesh_[k].vertices.size();
      double angle, maximum_angle = 0.0;
 
 
 
 
-     for( i = model_meshes_[k].vertices.size(); i < model_meshes_[k].vertices.size() * 2; ++i)
+     for( i = model_mesh_[k].vertices.size(); i < model_mesh_[k].vertices.size() * 2; ++i)
      {
-       eigen_vector_1 = iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ (i - 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[ model_meshes_[k].vertices[ i % number_vertices ] - 1].getVector3fMap().cast<double>();
-       eigen_vector_2 = iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ (i + 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ i % number_vertices ] - 1].getVector3fMap().cast<double>();
+       eigen_vector_1 = iteration_source_point_normal_cloud_ptr_->points[model_mesh_[k].vertices[ (i - 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[ model_mesh_[k].vertices[ i % number_vertices ] - 1].getVector3fMap().cast<double>();
+       eigen_vector_2 = iteration_source_point_normal_cloud_ptr_->points[model_mesh_[k].vertices[ (i + 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_mesh_[k].vertices[ i % number_vertices ] - 1].getVector3fMap().cast<double>();
 
        eigen_vector_1.normalize();
        eigen_vector_2.normalize();
@@ -412,9 +427,9 @@ Registration::convertEigenToPointCLoud()
      Eigen::Vector3d edge,normal_1,normal_2;
 
 
-     edge = iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ (maximum_index + number_vertices - 2) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ maximum_index ] - 1].getVector3fMap().cast<double>();
-     eigen_vector_1 = iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ (maximum_index + number_vertices - 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ maximum_index ] - 1].getVector3fMap().cast<double>();
-     eigen_vector_2 = iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ (maximum_index + number_vertices + 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_meshes_[k].vertices[ maximum_index ] - 1].getVector3fMap().cast<double>();
+     edge = iteration_source_point_normal_cloud_ptr_->points[model_mesh_[k].vertices[ (maximum_index + number_vertices - 2) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_mesh_[k].vertices[ maximum_index ] - 1].getVector3fMap().cast<double>();
+     eigen_vector_1 = iteration_source_point_normal_cloud_ptr_->points[model_mesh_[k].vertices[ (maximum_index + number_vertices - 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_mesh_[k].vertices[ maximum_index ] - 1].getVector3fMap().cast<double>();
+     eigen_vector_2 = iteration_source_point_normal_cloud_ptr_->points[model_mesh_[k].vertices[ (maximum_index + number_vertices + 1) % number_vertices ] - 1].getVector3fMap().cast<double>() - iteration_source_point_normal_cloud_ptr_->points[model_mesh_[k].vertices[ maximum_index ] - 1].getVector3fMap().cast<double>();
 
      normal_1 = edge.cross(eigen_vector_1);
      normal_2 = eigen_vector_2.cross(edge);
@@ -428,23 +443,23 @@ Registration::convertEigenToPointCLoud()
      normal_2.normalize();
 
 
-     normal_vector [ model_meshes_[k].vertices [maximum_index] - 1 ].push_back(normal_1);
-     normal_vector [ model_meshes_[k].vertices [maximum_index] - 1 ].push_back(normal_2);
-     surface_vector[ model_meshes_[k].vertices [maximum_index] - 1 ].push_back(area_1);
-     surface_vector[ model_meshes_[k].vertices [maximum_index] - 1 ].push_back(area_2);
+     normal_vector [ model_mesh_[k].vertices [maximum_index] - 1 ].push_back(normal_1);
+     normal_vector [ model_mesh_[k].vertices [maximum_index] - 1 ].push_back(normal_2);
+     surface_vector[ model_mesh_[k].vertices [maximum_index] - 1 ].push_back(area_1);
+     surface_vector[ model_mesh_[k].vertices [maximum_index] - 1 ].push_back(area_2);
 
 
-     normal_vector [ model_meshes_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(normal_1);
-     normal_vector [ model_meshes_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(normal_2);
-     surface_vector[ model_meshes_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(area_1);
-     surface_vector[ model_meshes_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(area_2);
+     normal_vector [ model_mesh_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(normal_1);
+     normal_vector [ model_mesh_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(normal_2);
+     surface_vector[ model_mesh_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(area_1);
+     surface_vector[ model_mesh_[k].vertices [(maximum_index + number_vertices - 2) % number_vertices] - 1 ].push_back(area_2);
 
 
-     normal_vector [ model_meshes_[k].vertices [(maximum_index + number_vertices - 1) % number_vertices] - 1 ].push_back(normal_1);
-     surface_vector[ model_meshes_[k].vertices [(maximum_index + number_vertices - 1) % number_vertices] - 1 ].push_back(area_1);
+     normal_vector [ model_mesh_[k].vertices [(maximum_index + number_vertices - 1) % number_vertices] - 1 ].push_back(normal_1);
+     surface_vector[ model_mesh_[k].vertices [(maximum_index + number_vertices - 1) % number_vertices] - 1 ].push_back(area_1);
 
-     normal_vector [ model_meshes_[k].vertices [(maximum_index + number_vertices + 1) % number_vertices] - 1 ].push_back(normal_2);
-     surface_vector[ model_meshes_[k].vertices [(maximum_index + number_vertices + 1) % number_vertices] - 1 ].push_back(area_2);
+     normal_vector [ model_mesh_[k].vertices [(maximum_index + number_vertices + 1) % number_vertices] - 1 ].push_back(normal_2);
+     surface_vector[ model_mesh_[k].vertices [(maximum_index + number_vertices + 1) % number_vertices] - 1 ].push_back(area_2);
 
    }
 
@@ -481,7 +496,7 @@ Registration::convertEigenToPointCLoud()
    uint32_t rgb;
    uint8_t value(255);
 
-   rgb = ((uint32_t)value);
+   rgb = ((uint32_t)value) << 16;
 
    for( i = 0; i < iteration_source_point_normal_cloud_ptr_->points.size(); ++i)
    {
@@ -496,11 +511,6 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 
   PCL_INFO("In calculate method\n");
   int i,j,k;
-
-
-
-
-  //visualizer.registerMouseCallback <Registration>(&Registration::mouseEventOccurred, *this);
 
 
   uint32_t rgb;
@@ -547,6 +557,7 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
     visualizer_ptr_->spin();
 
     visualizer_ptr_->removeAllPointClouds();
+
 
   }
 
@@ -640,7 +651,8 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
       pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_current_source(current_iteration_source_points_ptr);
 
 
-      visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (current_iteration_source_points_ptr, rgb_cloud_current_source, "source");
+      //visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (current_iteration_source_points_ptr, rgb_cloud_current_source, "source");
+      visualizer_ptr_->addPolygonMesh < pcl::PointXYZRGBNormal > (current_iteration_source_points_ptr,debug_model_mesh_);
       visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (target_point_normal_cloud_ptr_, rgb_cloud_target, "scan");
       visualizer_ptr_->addCorrespondences <pcl::PointXYZRGBNormal> (current_iteration_source_points_ptr, target_point_normal_cloud_ptr_, iteration_correspondences);
 
@@ -825,22 +837,20 @@ Registration::calculateAlternativeTransformations(int number_eigenvectors, doubl
 void
 Registration::writeDataToPCD(std::string file_path)
 {
+    /*
   pcl::PointCloud < pcl::PointXYZRGBNormal > output_cloud;
-
-  //output_cloud = *source_point_normal_cloud_ptr_ + (*iteration_source_point_normal_cloud_ptr_ + *target_point_normal_cloud_ptr_);
-  //output_cloud = *iteration_source_point_normal_cloud_ptr_;
 
   Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
 
   transform.block(0, 0, 3, 3) = (Eigen::AngleAxisd(4 * atan(1), Eigen::Vector3d::UnitX()) *  Eigen::Matrix3d::Identity());
 
   pcl::transformPointCloudWithNormals(*iteration_source_point_normal_cloud_ptr_, output_cloud, transform);
-
+*/
   pcl::PCDWriter pcd_writer;
 
-  pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + ".pcd", output_cloud);
+  pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + ".pcd", *iteration_source_point_normal_cloud_ptr_);
+  pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + "_target.pcd", *target_point_normal_cloud_ptr_);
 
-  //pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + "_source.pcd", *source_point_normal_cloud_ptr_);
 
 
 

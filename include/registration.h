@@ -86,7 +86,10 @@ class Registration
 
     pcl::visualization::PCLVisualizer::Ptr visualizer_ptr_;
 
-    std::vector <  pcl::Vertices > model_meshes_;
+    std::vector <  pcl::Vertices > model_mesh_;
+    std::vector <  pcl::Vertices > debug_model_mesh_;
+
+
 
     Eigen::VectorXd eigen_source_points_;
     Eigen::VectorXd eigen_target_points_;

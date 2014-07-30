@@ -86,7 +86,7 @@ CameraGrabber::getPointCloud(std::pair < int, int >& center_coordinates)
 
   face_classifier_.detectMultiScale(frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, cv::Size(30, 30));
 
-  if(faces.size() == 0)
+  if(faces.size() != 1)
   {
     PCL_ERROR("No faces detected\n");
     exit(1);
