@@ -37,6 +37,9 @@ class Registration
     getTargetPointCloudFromCamera (int device, std::string file_classifier);
 
     void
+    getTargetPointCloudFromFile(std::string pcd_file);
+
+    void
     calculateRigidTransformation (int number_of_iterations, double angle_limit, double distance_limit, bool visualize);
 
     void

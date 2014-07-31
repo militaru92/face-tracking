@@ -53,6 +53,36 @@ int main(int argc, char** argv)
 
   }
 
+  if(pcl::console::find_argument (argc, argv, "-f") >= 0)
+  {
+
+
+    Eigen::Matrix3d transform_matrix = Eigen::Matrix3d::Identity();
+    Eigen::Vector3d translation = Eigen::Vector3d::Zero();
+
+    transform_matrix(0,0) = 0.12;
+    transform_matrix(1,1) = 0.12;
+    transform_matrix(2,2) = 0.12;
+
+    transform_matrix = Eigen::AngleAxisd(pi,Eigen::Vector3d::UnitX()) * transform_matrix;
+
+
+
+
+    if(argc > 5)
+    {
+      angle_limit = boost::lexical_cast<double>(argv[4]) * pi;
+      distance_limit = boost::lexical_cast<double>(argv[5]);
+    }
+
+    std::string pcd_file(argv[3]);
+
+    registrator.getTargetPointCloudFromFile(pcd_file);
+    registrator.getDataFromModel(database_path, transform_matrix, translation);
+    registrator.alignModel();
+
+  }
+
 
   if(pcl::console::find_argument (argc, argv, "-m") >= 0)
   {

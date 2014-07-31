@@ -341,6 +341,25 @@ Registration::getTargetPointCloudFromCamera (int device, std::string file_classi
 
 }
 
+void
+Registration::getTargetPointCloudFromFile(std::string pcd_file)
+{
+
+  center_coordinates_.first = 335;
+  center_coordinates_.second = 191;
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+  if (pcl::io::loadPCDFile<pcl::PointXYZ> (pcd_file, *target_point_cloud_ptr) == -1)
+  {
+    PCL_ERROR("Could not open file %s\n", pcd_file.c_str());
+    exit(1);
+  }
+
+
+  setKdTree(target_point_cloud_ptr);
+}
+
 
 void
 Registration::alignModel ()
@@ -496,7 +515,7 @@ Registration::convertEigenToPointCLoud()
    uint32_t rgb;
    uint8_t value(255);
 
-   rgb = ((uint32_t)value) << 16;
+   rgb = ((uint32_t)value);
 
    for( i = 0; i < iteration_source_point_normal_cloud_ptr_->points.size(); ++i)
    {
@@ -638,13 +657,13 @@ Registration::calculateRigidTransformation(int number_of_iterations, double angl
 
 
     PCL_INFO ("Remaining points %d \n",k);
-
+/*
     if(k == 0)
     {
       PCL_ERROR("No correspondences found for Rigid Transformation; The initial alignment must be wrong\n");
       exit(1);
     }
-
+*/
     if(visualize)
     {
       pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_target(target_point_normal_cloud_ptr_);
