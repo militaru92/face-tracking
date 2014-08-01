@@ -25,16 +25,13 @@ class PositionModel
     readWeights (std::string file_path);
 
     Eigen::VectorXd
-    calculateMeanFace ();
+    calculateMeanFace (bool write = false);
 
     void
     calculateEigenValuesAndVectors ();
 
     void
     calculateModel ();
-
-    void
-    printEigenValues ();
 
     void
     calculateRandomWeights (int number_samples, std::string name);
@@ -46,13 +43,13 @@ class PositionModel
     writeModel (std::string path);
 
     std::vector <  pcl::Vertices >
-    getMeshes();
+    getMeshes(bool write = false);
 
     Eigen::VectorXd
-    getEigenValues();
+    getEigenValues(bool write = false);
 
     Eigen::MatrixXd
-    getEigenVectors();
+    getEigenVectors(bool write = false);
 
     //debuging methods
 

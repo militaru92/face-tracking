@@ -174,7 +174,7 @@ PositionModel::readDataFromFolders (std::string path, int number_samples, int nu
 
 
 Eigen::VectorXd
-PositionModel::calculateMeanFace ()
+PositionModel::calculateMeanFace (bool write)
 {
   int i;
 
@@ -190,6 +190,23 @@ PositionModel::calculateMeanFace ()
 
 
   PCL_INFO("Done with average face\n");
+
+  if(!write)
+    return mean_face_positions_;
+
+  std::ofstream ofs;
+  ofs.open("PCA.txt", std::ofstream::out | std::ofstream::app);
+
+  ofs << mean_face_positions_.rows() << std::endl;
+
+
+  for(int i = 0; i < mean_face_positions_.rows(); ++i)
+    ofs << mean_face_positions_(i) << ' ';
+
+  ofs << std::endl << std::endl;
+
+  ofs.close();
+
 
   return mean_face_positions_;
 
@@ -266,18 +283,6 @@ PositionModel::calculateModel ()
 }
 
 
-
-void
-PositionModel::printEigenValues ()
-{
-  std::ofstream ofs("eigenvalues.txt");
-  int i;
-
-  for(i = 0; i < eigenvalues_vector_.size(); ++i)
-  {
-    ofs << eigenvalues_vector_[i] <<std::endl;
-  }
-}
 
 void
 PositionModel::calculateRandomWeights (int number_samples, std::string name)
@@ -487,20 +492,81 @@ PositionModel::writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation_matrix,
 
 
 Eigen::VectorXd
-PositionModel::getEigenValues()
+PositionModel::getEigenValues(bool write)
 {
+  if(!write)
+    return eigenvalues_;
+
+  std::ofstream ofs;
+  ofs.open("PCA.txt", std::ofstream::out | std::ofstream::app);
+
+  ofs << eigenvalues_.rows() << std::endl;
+
+
+  for(int i = 0; i < eigenvalues_.rows(); ++i)
+    ofs << eigenvalues_(i) << ' ';
+
+  ofs << std::endl << std::endl;
+
+  ofs.close();
+
   return eigenvalues_;
 }
 
 Eigen::MatrixXd
-PositionModel::getEigenVectors()
+PositionModel::getEigenVectors(bool write)
 {
+  if(!write)
+    return eigenvectors_;
+
+  std::ofstream ofs;
+  ofs.open("PCA.txt", std::ofstream::out | std::ofstream::app);
+
+  ofs << eigenvectors_.rows() << ' ' << eigenvectors_.cols() << std::endl;
+
+  for(int j = 0; j < eigenvectors_.cols(); ++j)
+  {
+    for(int i = 0; i < eigenvectors_.rows(); ++i)
+    {
+      ofs << eigenvectors_(i,j) << ' ';
+    }
+
+    ofs << std::endl;
+  }
+
+  std::cout << std::endl;
+
+  ofs.close();
+
   return eigenvectors_;
+
 }
 
 std::vector <  pcl::Vertices >
-PositionModel::getMeshes()
+PositionModel::getMeshes(bool write)
 {
+  if(!write)
+    return meshes_;
+
+
+  std::ofstream ofs;
+  ofs.open("PCA.txt", std::ofstream::out | std::ofstream::app);
+
+  for(int i = 0; i < meshes_.size(); ++i)
+  {
+    for(int j = 0; j < meshes_[i].vertices.size(); ++j)
+    {
+      ofs << meshes_[i].vertices[j] << ' ';
+    }
+
+    ofs << std::endl;
+  }
+
+  ofs << std::endl;
+
+  ofs.close();
+
   return meshes_;
+
 }
 

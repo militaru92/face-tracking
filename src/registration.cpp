@@ -254,15 +254,116 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
 {
   int i,j;
 
-  PositionModel position_model;
+  std::ifstream ins("PCA.txt");
 
-  position_model.readDataFromFolders(database_path,150,4,transformation_matrix,translation);
+  if(!ins.is_open())
+  {
+    PositionModel position_model;
 
-  eigen_source_points_ = position_model.calculateMeanFace();
+    position_model.readDataFromFolders(database_path,150,4,transformation_matrix,translation);
 
-  position_model.calculateEigenValuesAndVectors();
+    eigen_source_points_ = position_model.calculateMeanFace(true);
 
-  model_mesh_ = position_model.getMeshes();
+    position_model.calculateEigenValuesAndVectors();
+
+    model_mesh_ = position_model.getMeshes(true);
+
+    eigenvalues_vector_ = position_model.getEigenValues(true);
+    eigenvectors_matrix_ = position_model.getEigenVectors(true);
+    PCL_INFO("Done with eigenvectors\n");
+
+  }
+
+  else
+  {
+      int i,j,rows,cols;
+      uint32_t vertice;
+
+      std::string line;
+      std::stringstream ss;
+
+      std::getline(ins,line);
+      ss.str(line);
+      ss >> rows;
+
+      eigen_source_points_.resize(rows);
+
+      std::getline(ins,line);
+      ss.str(line);
+
+
+
+
+      for(i = 0; i < rows; ++i)
+      {
+        ss >> eigen_source_points_(i);
+      }
+
+      std::getline(ins,line);
+
+      while(true)
+      {
+        std::getline(ins,line);
+
+        if(line == "")
+        {
+          break;
+        }
+
+        ss.str(line);
+
+        pcl::Vertices vertice_vector;
+
+        while(ss >> vertice)
+        {
+          vertice_vector.vertices.push_back(vertice);
+        }
+
+        model_mesh_.push_back(vertice_vector);
+
+      }
+
+      std::getline(ins,line);
+
+
+      std::getline(ins,line);
+      ss.str(line);
+      ss >> rows;
+
+      eigenvalues_vector_.resize(rows);
+
+      std::getline(ins,line);
+      ss.str(line);
+
+
+      for(i = 0; i < rows; ++i)
+      {
+        ss >> eigenvalues_vector_(i);
+      }
+
+      std::getline(ins,line);
+
+
+      std::getline(ins,line);
+      ss.str(line);
+      ss >> rows >> cols;
+
+      eigenvectors_matrix_.resize(rows,cols);
+
+      for(j = 0; j < cols; ++j)
+      {
+        std::getline(ins,line);
+        ss.str(line);
+
+        for(i = 0; i < rows; ++i)
+        {
+          ss >> eigenvectors_matrix_(i,j);
+        }
+      }
+
+
+  }
+
 
   debug_model_mesh_ = model_mesh_;
 
@@ -273,9 +374,6 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
       debug_model_mesh_[i].vertices[j] = debug_model_mesh_[i].vertices[j] - 1;
     }
   }
-  eigenvalues_vector_ = position_model.getEigenValues();
-  eigenvectors_matrix_ = position_model.getEigenVectors();
-  PCL_INFO("Done with eigenvectors\n");
 
   convertEigenToPointCLoud();
 
