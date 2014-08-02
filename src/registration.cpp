@@ -272,34 +272,36 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
     eigenvectors_matrix_ = position_model.getEigenVectors(true);
     PCL_INFO("Done with eigenvectors\n");
 
+    //exit(1);
+
   }
 
   else
   {
       int i,j,rows,cols;
+
       uint32_t vertice;
 
       std::string line;
-      std::stringstream ss;
 
-      std::getline(ins,line);
-      ss.str(line);
-      ss >> rows;
+      ins >> rows;
 
       eigen_source_points_.resize(rows);
 
-      std::getline(ins,line);
-      ss.str(line);
+      double aux;
 
 
 
 
       for(i = 0; i < rows; ++i)
       {
-        ss >> eigen_source_points_(i);
+        ins >> aux;
+        eigen_source_points_(i) = aux;
       }
 
       std::getline(ins,line);
+      std::getline(ins,line);
+
 
       while(true)
       {
@@ -310,11 +312,11 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
           break;
         }
 
-        ss.str(line);
+        std::istringstream iss(line);
 
         pcl::Vertices vertice_vector;
 
-        while(ss >> vertice)
+        while(iss >> vertice)
         {
           vertice_vector.vertices.push_back(vertice);
         }
@@ -323,41 +325,35 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
 
       }
 
-      std::getline(ins,line);
 
 
-      std::getline(ins,line);
-      ss.str(line);
-      ss >> rows;
+
+      ins >> rows;
 
       eigenvalues_vector_.resize(rows);
-
-      std::getline(ins,line);
-      ss.str(line);
 
 
       for(i = 0; i < rows; ++i)
       {
-        ss >> eigenvalues_vector_(i);
+        ins >> eigenvalues_vector_(i);
       }
 
       std::getline(ins,line);
 
 
-      std::getline(ins,line);
-      ss.str(line);
-      ss >> rows >> cols;
+      ins >> rows >> cols;
 
       eigenvectors_matrix_.resize(rows,cols);
 
+
+
+
+
       for(j = 0; j < cols; ++j)
       {
-        std::getline(ins,line);
-        ss.str(line);
-
         for(i = 0; i < rows; ++i)
         {
-          ss >> eigenvectors_matrix_(i,j);
+          ins >> eigenvectors_matrix_(i,j);
         }
       }
 
@@ -377,13 +373,14 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
 
   convertEigenToPointCLoud();
 
+
   pcl::copyPointCloud(*iteration_source_point_normal_cloud_ptr_,*original_source_point_normal_cloud_ptr_);
 
 
   uint32_t rgb;
   uint8_t value(255);
 
-  rgb = ((uint32_t)value) <<16;
+  rgb = ((uint32_t)value);
 
   center_point_ = Eigen::Vector3d::Zero();
 
@@ -506,6 +503,7 @@ Registration::convertEigenToPointCLoud()
 
      iteration_source_point_normal_cloud_ptr_->push_back(pcl_point);
    }
+
 
    std::vector < std::vector < Eigen::Vector3d > > normal_vector(iteration_source_point_normal_cloud_ptr_->points.size());
    std::vector < std::vector < double > > surface_vector(iteration_source_point_normal_cloud_ptr_->points.size());
