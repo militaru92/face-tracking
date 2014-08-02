@@ -160,7 +160,7 @@ int main(int argc, char** argv)
 
   }
 
-  registrator.calculateAlternativeTransformations(50,0.001,10,15,angle_limit,distance_limit,true);
+  registrator.calculateAlternativeTransformations(50,0.001,10,15,angle_limit,distance_limit,false);
 
   registrator.writeDataToPCD(obj_path);
 
