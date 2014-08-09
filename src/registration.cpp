@@ -9,10 +9,6 @@ Registration::Registration()
   rigid_transformed_points_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
   iteration_source_point_normal_cloud_ptr_.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 
-  visualizer_ptr_.reset(new pcl::visualization::PCLVisualizer("3D Visualizer"));
-  visualizer_ptr_->setBackgroundColor(1, 1, 1);
-  visualizer_ptr_->initCameraParameters();
-
 }
 
 
@@ -254,30 +250,32 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
 {
   int i,j;
 
-  std::ifstream ins("PCA.txt");
+  boost::filesystem::path data_path(database_path);
 
-  if(!ins.is_open())
+  if( boost::filesystem::exists(data_path) )
   {
-    PositionModel position_model;
+    if( boost::filesystem::is_directory(data_path) )
+    {
+      PositionModel position_model;
 
-    position_model.readDataFromFolders(database_path,150,4,transformation_matrix,translation);
+      position_model.readDataFromFolders(database_path,150,4,transformation_matrix,translation);
 
-    eigen_source_points_ = position_model.calculateMeanFace(true);
+      eigen_source_points_ = position_model.calculateMeanFace(true);
 
-    position_model.calculateEigenValuesAndVectors();
+      position_model.calculateEigenValuesAndVectors();
 
-    model_mesh_ = position_model.getMeshes(true);
+      model_mesh_ = position_model.getMeshes(true);
 
-    eigenvalues_vector_ = position_model.getEigenValues(true);
-    eigenvectors_matrix_ = position_model.getEigenVectors(true);
-    PCL_INFO("Done with eigenvectors\n");
+      eigenvalues_vector_ = position_model.getEigenValues(true);
+      eigenvectors_matrix_ = position_model.getEigenVectors(true);
+      PCL_INFO("Done with eigenvectors\n");
+    }
 
-    //exit(1);
+    else if ( boost::filesystem::is_regular_file(data_path))
+    {
 
-  }
+      std::ifstream ins(database_path.c_str());
 
-  else
-  {
       int i,j,rows,cols;
 
       uint32_t vertice;
@@ -289,8 +287,6 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
       eigen_source_points_.resize(rows);
 
       double aux;
-
-
 
 
       for(i = 0; i < rows; ++i)
@@ -326,8 +322,6 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
       }
 
 
-
-
       ins >> rows;
 
       eigenvalues_vector_.resize(rows);
@@ -347,8 +341,6 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
 
 
 
-
-
       for(j = 0; j < cols; ++j)
       {
         for(i = 0; i < rows; ++i)
@@ -357,7 +349,19 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
         }
       }
 
+    }
 
+    else
+    {
+      PCL_ERROR("Unknown file type\n");
+      exit(1);
+    }
+  }
+
+  else
+  {
+    PCL_ERROR("Could not find database\n");
+    exit(1);
   }
 
 
@@ -393,7 +397,6 @@ Registration::getDataFromModel(std::string database_path, Eigen::MatrixX3d trans
   center_point_ /= static_cast<double> (original_source_point_normal_cloud_ptr_->points.size());
 
   PCL_INFO("Done with reading from model\n");
-
 
 }
 
@@ -935,6 +938,13 @@ void
 Registration::calculateAlternativeTransformations(int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit, bool visualize)
 {
   int i;
+
+  if(visualize)
+  {
+    visualizer_ptr_.reset(new pcl::visualization::PCLVisualizer("3D Visualizer"));
+    visualizer_ptr_->setBackgroundColor(1, 1, 1);
+    visualizer_ptr_->initCameraParameters();
+  }
 
   for( i = 0; i < number_of_total_iterations; ++i)
   {
