@@ -7,7 +7,7 @@ int main(int argc, char** argv)
 
   std::string database_path,result_path;
 
-  database_path = "/media/ace/New Volume/Google Summer/Part1/";
+  database_path = "PCA.txt";
   result_path = "result";
 
   double pi =  4 * atan(1);
@@ -45,6 +45,7 @@ int main(int argc, char** argv)
     registrator.getTargetPointCloudFromCamera(CV_CAP_OPENNI_ASUS,xml_file);
     registrator.getDataFromModel(database_path, transform_matrix, translation);
     registrator.alignModel();
+    registrator.calculateAlternativeRegistrations(50,0.001,10,15,angle_limit,distance_limit,false);
 
   }
 
@@ -70,10 +71,30 @@ int main(int argc, char** argv)
     registrator.getTargetPointCloudFromFile(pcd_file);
     registrator.getDataFromModel(database_path, transform_matrix, translation);
     registrator.alignModel();
+    registrator.calculateAlternativeRegistrations(50,0.001,10,15,angle_limit,distance_limit,false);
 
   }
 
-  registrator.calculateAlternativeTransformations(50,0.001,10,15,angle_limit,distance_limit,false);
+
+  if(pcl::console::find_switch (argc, argv, "--kinfu"))
+  {
+
+    Eigen::Matrix3d transform_matrix = Eigen::Matrix3d::Identity();
+    Eigen::Vector3d translation = Eigen::Vector3d::Zero();
+
+    transform_matrix(0,0) = 0.12;
+    transform_matrix(1,1) = 0.12;
+    transform_matrix(2,2) = 0.12;
+
+    transform_matrix = Eigen::AngleAxisd(pi,Eigen::Vector3d::UnitX()) * transform_matrix;
+
+
+    registrator.getDataFromModel (database_path, transform_matrix, translation);
+    registrator.calculateKinfuTrackerRegistrations (50,0.001,25,angle_limit,distance_limit);
+  }
+
+
+
 
   registrator.writeDataToPCD(result_path);
 

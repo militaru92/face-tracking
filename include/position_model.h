@@ -43,18 +43,18 @@ class PositionModel
     writeModel (std::string path);
 
     std::vector <  pcl::Vertices >
-    getMeshes(bool write = false);
+    getMeshes (bool write = false);
 
     Eigen::VectorXd
-    getEigenValues(bool write = false);
+    getEigenValues (bool write = false);
 
     Eigen::MatrixXd
-    getEigenVectors(bool write = false);
+    getEigenVectors (bool write = false);
 
     //debuging methods
 
     void
-    writeMeanFaceAndRotatedMeanFace(Eigen::MatrixX3d rotation, Eigen::Vector3d translation, std::string mean_path, std::string transformed_path, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr source_points, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr target_points);
+    writeMeanFaceAndRotatedMeanFace (Eigen::MatrixX3d rotation, Eigen::Vector3d translation, std::string mean_path, std::string transformed_path, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr source_points, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr target_points);
 
   private:
     int number_points_, number_faces_;

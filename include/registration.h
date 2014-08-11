@@ -3,6 +3,7 @@
 
 #include "position_model.h"
 #include "camera_grabber.h"
+#include "tracker.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/filters/statistical_outlier_removal.h>
@@ -15,7 +16,7 @@ class Registration
 {
   public:
 
-    Registration();
+    Registration ();
 
     void
     readDataFromOBJFiles (std::string source_points_path, std::string target_points_path);
@@ -25,7 +26,7 @@ class Registration
 
 
     void
-    readDataFromOBJFileAndPCDScan(std::string source_points_path, std::string target_points_path, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation);
+    readDataFromOBJFileAndPCDScan (std::string source_points_path, std::string target_points_path, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation);
 
     void
     getDataFromModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation);
@@ -37,16 +38,20 @@ class Registration
     getTargetPointCloudFromCamera (int device, std::string file_classifier);
 
     void
-    getTargetPointCloudFromFile(std::string pcd_file);
+    getTargetPointCloudFromFile (std::string pcd_file);
 
     void
-    calculateRigidTransformation (int number_of_iterations, double angle_limit, double distance_limit, bool visualize);
+    calculateRigidRegistration (int number_of_iterations, double angle_limit, double distance_limit, bool visualize);
 
     void
-    calculateNonRigidTransformation (int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit, bool visualize);
+    calculateNonRigidRegistration (int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit, bool visualize);
 
     void
-    calculateAlternativeTransformations (int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit, bool visualize = false);
+    calculateAlternativeRegistrations (int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit, bool visualize = false);
+
+
+    void
+    calculateKinfuTrackerRegistrations (int number_eigenvectors, double reg_weight, int number_of_rigid_iterations, double angle_limit, double distance_limit);
 
     void
     alignModel ();
@@ -66,12 +71,19 @@ class Registration
     pcl::Correspondences
     filterNonRigidCorrespondences (double angle_limit, double distance_limit);
 
+    void
+    calculateModelCenterPoint ();
+
 
 
   private:
 
     void
     mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void);
+
+    void
+    keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event, void* viewer_void);
+
 
 
     Eigen::Matrix4d homogeneus_matrix_;
@@ -99,7 +111,16 @@ class Registration
     Eigen::VectorXd eigenvalues_vector_;
     Eigen::MatrixXd eigenvectors_matrix_;
 
-    Eigen::Vector3d center_point_;
+    Eigen::Vector3d model_center_point_;
+
+    pcl::PointXYZ face_center_point_;
+
+    boost::shared_ptr < Tracker > tracker_ptr_;
+
+    int index_;
+
+    bool continue_tracking_;
+    bool first_face_found_;
 
 
 
