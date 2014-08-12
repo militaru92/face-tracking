@@ -24,7 +24,7 @@ class Tracker : public pcl::OpenNIGrabber
 
     typedef boost::shared_ptr<openni_wrapper::DepthImage> DepthImagePtr;
 
-    Tracker ();
+    Tracker (int device);
 
     ~Tracker () throw ();
 

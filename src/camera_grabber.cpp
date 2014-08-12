@@ -120,8 +120,6 @@ CameraGrabber::getPointCloud (std::pair < int, int >& center_coordinates)
   center_coordinates.first = faces[0].x + faces[0].width/2;
   center_coordinates.second = faces[0].y + faces[0].height/2;
 
-  std::cout<<"Face is:" <<center_coordinates.first << " " << center_coordinates.second << std::endl;
-
   return (point_cloud_ptr_);
 
 }

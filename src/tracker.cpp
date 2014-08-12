@@ -1,7 +1,7 @@
 
 #include <tracker.h>
 
-Tracker::Tracker ()
+Tracker::Tracker (int device)
 {
 
   scan_ = false;
@@ -12,8 +12,6 @@ Tracker::Tracker ()
 
   Eigen::Vector3f volume_size = Eigen::Vector3f::Constant  (1.2f);
   kinfu_.volume ().setSize  (volume_size);
-
-  std::cout << "Resolution\n" << kinfu_.volume ().getResolution () << std::endl;
 
   Eigen::Matrix3f R = Eigen::Matrix3f::Identity  ();
   translation_ = volume_size * 0.5f - Eigen::Vector3f  (0, 0, volume_size  (2) / 2 * 1.2f);
@@ -26,7 +24,7 @@ Tracker::Tracker ()
   kinfu_.setCameraMovementThreshold (0.001f);
 
 
-  if ( !video_grabber_.open (CV_CAP_OPENNI_ASUS) )
+  if ( !video_grabber_.open (device) )
   {
     PCL_ERROR ("The camera is disconnected\n");
     exit (-1);
@@ -113,8 +111,6 @@ Tracker::takeKinfuCloud ()
 
   cloud_kinfu_ptr_->width =  (int) cloud_kinfu_ptr_->points.size  ();
   cloud_kinfu_ptr_->height = 1;
-
-  std::cout << "No order\n";
 
 
 }

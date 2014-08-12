@@ -534,7 +534,7 @@ PositionModel::getEigenVectors (bool write)
     ofs << std::endl;
   }
 
-  std::cout << std::endl;
+  ofs << std::endl;
 
   ofs.close ();
 

@@ -2,8 +2,6 @@
 
 Registration::Registration ()
 {
-  homogeneus_matrix_ = Eigen::Matrix4d::Identity ();
-
   original_source_point_normal_cloud_ptr_.reset (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
   target_point_normal_cloud_ptr_.reset (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
   rigid_transformed_points_ptr_.reset (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
@@ -12,10 +10,17 @@ Registration::Registration ()
   index_ = 0;
   continue_tracking_ = true;
   first_face_found_ = false;
+  debug_mode_on_ = false;
 
 }
 
+void
+Registration::setDebugMode (bool debug_mode)
+{
+  debug_mode_on_ = debug_mode;
+}
 
+/*
 void
 Registration::readDataFromOBJFiles (std::string source_points_path, std::string target_points_path)
 {
@@ -26,8 +31,6 @@ Registration::readDataFromOBJFiles (std::string source_points_path, std::string 
 
 
   kdtree_.setInputCloud (target_point_normal_cloud_ptr_);
-
-
 
 }
 
@@ -248,7 +251,7 @@ Registration::readDataFromOBJFileAndPCDScan (std::string source_points_path, std
 
 
 }
-
+*/
 void
 Registration::getDataFromModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation)
 {
@@ -399,7 +402,7 @@ Registration::getDataFromModel (std::string database_path, Eigen::MatrixX3d tran
   calculateModelCenterPoint ();
 
 
-  PCL_INFO ("Done with reading from model\n");
+  PCL_INFO ("Done with reading the statistical model\n");
 
 }
 
@@ -419,23 +422,6 @@ Registration::calculateModelCenterPoint ()
 
 }
 
-void
-Registration::readTargetPointCloud (std::string target_points_path)
-{
-
-  pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr (new pcl::PointCloud<pcl::PointXYZ>);
-
-  if (pcl::io::loadPCDFile<pcl::PointXYZ> (target_points_path, *target_point_cloud_ptr) == -1) //* load the file
-  {
-    PCL_ERROR ("Could not open file %s\n", target_points_path.c_str ());
-    exit (1);
-  }
-
-  setKdTree (target_point_cloud_ptr);
-
-  PCL_INFO ("Done with reading from Target\n");
-
-}
 
 void
 Registration::getTargetPointCloudFromCamera (int device, std::string file_classifier)
@@ -495,10 +481,6 @@ Registration::alignModel ()
 
   pcl::transformPointCloudWithNormals (*iteration_source_point_normal_cloud_ptr_,*iteration_source_point_normal_cloud_ptr_,translation,Eigen::Quaternion<double>::Identity ());
 
-  pcl::PCDWriter pcd_writer;
-  pcd_writer.writeBinary < pcl::PointXYZRGBNormal > ("model.pcd", *iteration_source_point_normal_cloud_ptr_);
-
-  //pcl::copyPointCloud (*iteration_source_point_normal_cloud_ptr_, *source_point_normal_cloud_ptr_);
 }
 
 void
@@ -655,21 +637,11 @@ void
 Registration::calculateRigidRegistration (int number_of_iterations, double angle_limit, double distance_limit, bool visualize)
 {
 
-  PCL_INFO ("In calculate method\n");
   int i,j,k;
 
 
   uint32_t rgb;
   uint8_t value (255);
-
-  rgb = ( (uint32_t)value) << 16;
-
-/*
-  for ( i = 0; i < original_source_point_normal_cloud_ptr_->points.size (); ++i)
-  {
-    original_source_point_normal_cloud_ptr_->points[i].rgb = *reinterpret_cast<float*> (&rgb);
-  }
-*/
 
 
   rgb = ( (uint32_t)value) << 8;
@@ -694,26 +666,40 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
 
   if (visualize)
   {
-
+/*
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_source (iteration_source_point_normal_cloud_ptr_);
 
     visualizer_ptr_->addPointCloud <pcl::PointXYZRGBNormal> (iteration_source_point_normal_cloud_ptr_,rgb_source, "source");
     visualizer_ptr_->addPointCloudNormals <pcl::PointXYZRGBNormal> (iteration_source_point_normal_cloud_ptr_, 20, 0.1, "normals");
+*/
+    if (debug_mode_on_)
+    {
+      visualizer_ptr_->spin ();
+    }
 
-    visualizer_ptr_->spin ();
+    else
+    {
+      visualizer_ptr_->spinOnce (500);
+    }
 
+
+    visualizer_ptr_->removeAllShapes ();
     visualizer_ptr_->removeAllPointClouds ();
+    visualizer_ptr_->removeCorrespondences ();
 
 
   }
+
+  Eigen::Matrix4f current_homogeneus_matrix;
+  pcl::Correspondences iteration_correspondences;
+
+  pcl::registration::DefaultConvergenceCriteria < float > convergence(j, current_homogeneus_matrix,iteration_correspondences);
 
 
   for (j = 0; j < number_of_iterations; ++j)
   {
 
-    PCL_INFO ("Iteration %d\n",j);
-
-    pcl::Correspondences iteration_correspondences;
+    iteration_correspondences.clear ();
 
     k = 0;
 
@@ -783,14 +769,6 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
     }
 
 
-    PCL_INFO ("Remaining points %d \n",k);
-/*
-    if (k == 0)
-    {
-      PCL_ERROR ("No correspondences found for Rigid Transformation; The initial alignment must be wrong\n");
-      exit (1);
-    }
-*/
     if (visualize)
     {
       pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_target (target_point_normal_cloud_ptr_);
@@ -802,7 +780,15 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
       visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (target_point_normal_cloud_ptr_, rgb_cloud_target, "scan");
       visualizer_ptr_->addCorrespondences <pcl::PointXYZRGBNormal> (current_iteration_source_points_ptr, target_point_normal_cloud_ptr_, iteration_correspondences);
 
-      visualizer_ptr_->spin ();
+      if(debug_mode_on_)
+      {
+        visualizer_ptr_->spin ();
+      }
+
+      else
+      {
+        visualizer_ptr_->spinOnce (500);
+      }
 
       visualizer_ptr_->removeAllShapes ();
       visualizer_ptr_->removeAllPointClouds ();
@@ -831,8 +817,6 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
 
     solutions = JJ.colPivHouseholderQr ().solve (right_side);
 
-    PCL_INFO ("Done with linear Solvers\n");
-
 
     current_iteration_rotation = Eigen::AngleAxisd (solutions[0],Eigen::Vector3d::UnitX ()) * Eigen::AngleAxisd (solutions[1],Eigen::Vector3d::UnitY ()) * Eigen::AngleAxisd (solutions[2],Eigen::Vector3d::UnitZ ()) ;
 
@@ -844,10 +828,10 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
 
 
 
-    Eigen::Matrix4d current_homogeneus_matrix,resulting_homogeneus_matrix;
 
-    current_homogeneus_matrix.block (0, 0, 3, 3) = current_iteration_rotation;
-    current_homogeneus_matrix.block (0, 3, 3, 1) = current_iteration_translation;
+
+    current_homogeneus_matrix.block (0, 0, 3, 3) = current_iteration_rotation.cast < float > ();
+    current_homogeneus_matrix.block (0, 3, 3, 1) = current_iteration_translation.cast < float > ();
     current_homogeneus_matrix.row (3) << 0, 0, 0, 1;
 
     pcl::PointCloud<pcl::PointXYZRGBNormal> result;
@@ -856,27 +840,15 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
 
     pcl::copyPointCloud (result,*current_iteration_source_points_ptr);
 
-
-    resulting_homogeneus_matrix = current_homogeneus_matrix * homogeneus_matrix_;
-
-/*
-    double difference = ( resulting_homogeneus_matrix - homogeneus_matrix_ ).norm ();
-
-    if (difference < 0.1)
-        break;
-*/
-
-    homogeneus_matrix_ = resulting_homogeneus_matrix;
-
-    //homogeneus_matrices_vector_.push_back (current_homogeneus_matrix);
-
-    //iteration_correspondences_vector_.push_back (iteration_correspondences);
+    if( convergence.hasConverged () )
+    {
+      break;
+    }
 
 
 
 
   }
-
 
   pcl::copyPointCloud (*current_iteration_source_points_ptr,*iteration_source_point_normal_cloud_ptr_);
   convertPointCloudToEigen ();
@@ -940,23 +912,27 @@ Registration::calculateNonRigidRegistration (int number_eigenvectors, double reg
 
   if (visualize)
   {
-    //pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_target (target_point_normal_cloud_ptr_);
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_current_source (iteration_source_point_normal_cloud_ptr_);
 
 
-    visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (iteration_source_point_normal_cloud_ptr_, rgb_cloud_current_source, "source");
-    //visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (target_point_normal_cloud_ptr_, rgb_cloud_target, "scan");
-    //visualizer_ptr_->addCorrespondences <pcl::PointXYZRGBNormal> (iteration_source_point_normal_cloud_ptr_, target_point_normal_cloud_ptr_, correspondences);
+    visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (iteration_source_point_normal_cloud_ptr_, rgb_cloud_current_source, "model");
 
 
-    visualizer_ptr_->spin ();
+    if (debug_mode_on_)
+    {
+      visualizer_ptr_->spin ();
+    }
 
-    PCL_INFO("Get ready to scan cloud\n");
+    else
+    {
+      visualizer_ptr_->spinOnce (500);
+    }
 
-
+/*
     visualizer_ptr_->removeAllShapes ();
     visualizer_ptr_->removeAllPointClouds ();
     visualizer_ptr_->removeCorrespondences ();
+    */
 
   }
 
@@ -987,20 +963,21 @@ Registration::calculateAlternativeRegistrations (int number_eigenvectors, double
 }
 
 void
-Registration::calculateKinfuTrackerRegistrations (int number_eigenvectors, double reg_weight, int number_of_rigid_iterations, double angle_limit, double distance_limit)
+Registration::calculateKinfuTrackerRegistrations (int device, int number_eigenvectors, double reg_weight, int number_of_rigid_iterations, double angle_limit, double distance_limit)
 {
 
   visualizer_ptr_.reset (new pcl::visualization::PCLVisualizer ("3D Visualizer"));
-  visualizer_ptr_->setBackgroundColor (0, 0, 0);
+  visualizer_ptr_->setBackgroundColor (1, 1, 1);
   visualizer_ptr_->initCameraParameters ();
   visualizer_ptr_->registerKeyboardCallback <Registration> (&Registration::keyboardEventOccurred, *this,(void*) this);
 
-  tracker_ptr_.reset (new Tracker);
+  tracker_ptr_.reset (new Tracker (device));
   tracker_ptr_->startUp ();
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr;
   target_point_cloud_ptr = tracker_ptr_->getKinfuCloud ();
 
+  PCL_INFO("Press \' t \' to scan the first part of the cloud\n");
 
   while ( continue_tracking_ )
   {
@@ -1008,7 +985,6 @@ Registration::calculateKinfuTrackerRegistrations (int number_eigenvectors, doubl
     visualizer_ptr_->spinOnce (100);
     if ( tracker_ptr_->execute () )
     {
-      std::cout << "In if execute\n";
 
       if ( !first_face_found_ && !tracker_ptr_->isFaceFound () )
       {
@@ -1021,7 +997,6 @@ Registration::calculateKinfuTrackerRegistrations (int number_eigenvectors, doubl
 
 
         face_center_point_ = tracker_ptr_->getFaceCenter ();
-        std::cout << "Face Found....\n" << face_center_point_.getVector3fMap() <<std::endl;
         calculateModelCenterPoint ();
         alignModel ();
 
@@ -1033,6 +1008,8 @@ Registration::calculateKinfuTrackerRegistrations (int number_eigenvectors, doubl
       calculateRigidRegistration (number_of_rigid_iterations,angle_limit,distance_limit,true);
 
       calculateNonRigidRegistration (number_eigenvectors,reg_weight,angle_limit,distance_limit,true);
+
+      PCL_INFO("Press either \' t \' to scan the next part or \' x \' to exit program\n");
 
     }
   }
@@ -1048,22 +1025,11 @@ Registration::calculateKinfuTrackerRegistrations (int number_eigenvectors, doubl
 void
 Registration::writeDataToPCD (std::string file_path)
 {
-    /*
-  pcl::PointCloud < pcl::PointXYZRGBNormal > output_cloud;
 
-  Eigen::Matrix4d transform = Eigen::Matrix4d::Identity ();
-
-  transform.block (0, 0, 3, 3) = (Eigen::AngleAxisd (4 * atan (1), Eigen::Vector3d::UnitX ()) *  Eigen::Matrix3d::Identity ());
-
-  pcl::transformPointCloudWithNormals (*iteration_source_point_normal_cloud_ptr_, output_cloud, transform);
-*/
   pcl::PCDWriter pcd_writer;
 
   pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + ".pcd", *iteration_source_point_normal_cloud_ptr_);
   pcd_writer.writeBinary < pcl::PointXYZRGBNormal > (file_path + "_target.pcd", *target_point_normal_cloud_ptr_);
-
-
-
 
 }
 
@@ -1086,18 +1052,6 @@ Registration::setKdTree (pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_
   pcl::concatenateFields (*target_point_cloud_ptr, *target_normal_cloud_ptr, *target_point_normal_cloud_ptr_);
 
   kdtree_.setInputCloud (target_point_normal_cloud_ptr_);
-
-  int i,j=0;
-
-  eigen_target_points_.resize (3 * target_point_normal_cloud_ptr_->size ());
-
-  for (i = 0; i < target_point_normal_cloud_ptr_->size (); ++i)
-  {
-    eigen_target_points_[j++] = target_point_normal_cloud_ptr_->at (i).x;
-    eigen_target_points_[j++] = target_point_normal_cloud_ptr_->at (i).y;
-    eigen_target_points_[j++] = target_point_normal_cloud_ptr_->at (i).z;
-  }
-
 
 
 }
@@ -1174,16 +1128,6 @@ Registration::filterNonRigidCorrespondences (double angle_limit, double distance
   return (correspondences_vector);
 }
 
-void
-Registration::mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void)
-{
-  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer = *static_cast<boost::shared_ptr<pcl::visualization::PCLVisualizer> *> (viewer_void);
-
-  if (event.getButton () == pcl::visualization::MouseEvent::RightButton)
-  {
-    std::cout << "X: " << event.getX () << " Y: " << event.getY () << std::endl;
-  }
-}
 
 void
 Registration::keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event, void* viewer_void)
@@ -1196,14 +1140,24 @@ Registration::keyboardEventOccurred (const pcl::visualization::KeyboardEvent &ev
     tracker_ptr_->setScan(true);
   }
 
-  if (c == 's')
+  if (c == 's' && debug_mode_on_)
   {
     visualizer_ptr_->saveScreenshot("ScreenShot" + boost::lexical_cast<std::string> ( index_ ) + ".png");
   }
 
-  if (c == 'c')
+  if (c == 'x')
   {
     continue_tracking_ = false;
+  }
+
+  if (c == '1' && debug_mode_on_)
+  {
+    pcl::io::savePCDFile ("target_cloud_bin_" + boost::lexical_cast<std::string> (index_) + ".pcd", *target_point_normal_cloud_ptr_, true);
+  }
+
+  if (c == '2' && debug_mode_on_)
+  {
+    pcl::io::savePCDFile ("model_cloud_bin_" + boost::lexical_cast<std::string> (index_) + ".pcd", *iteration_source_point_normal_cloud_ptr_, true);
   }
 
   ++index_;

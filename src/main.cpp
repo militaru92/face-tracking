@@ -14,13 +14,24 @@ int main(int argc, char** argv)
 
   double distance_limit = 0.001, angle_limit = pi * 0.25;
 
+  int device = CV_CAP_OPENNI;
+
+  Registration registrator;
+
   pcl::console::parse_argument (argc, argv, "-database", database_path);
   pcl::console::parse_argument (argc, argv, "-result", result_path);
   pcl::console::parse_argument (argc, argv, "-distance", distance_limit);
   pcl::console::parse_argument (argc, argv, "-angle", angle_limit);
 
-  Registration registrator;
 
+  bool debug = pcl::console::find_switch (argc, argv, "-debug");
+
+  if( pcl::console::find_switch (argc, argv, "-Asus") )
+  {
+    device = CV_CAP_OPENNI_ASUS;
+  }
+
+  registrator.setDebugMode ( debug );
 
 
   if(pcl::console::find_switch (argc, argv, "--camera"))
@@ -42,10 +53,10 @@ int main(int argc, char** argv)
 
 
 
-    registrator.getTargetPointCloudFromCamera(CV_CAP_OPENNI_ASUS,xml_file);
+    registrator.getTargetPointCloudFromCamera(device,xml_file);
     registrator.getDataFromModel(database_path, transform_matrix, translation);
     registrator.alignModel();
-    registrator.calculateAlternativeRegistrations(50,0.001,10,15,angle_limit,distance_limit,false);
+    registrator.calculateAlternativeRegistrations(50,0.001,10,100,angle_limit,distance_limit,debug);
 
   }
 
@@ -71,7 +82,7 @@ int main(int argc, char** argv)
     registrator.getTargetPointCloudFromFile(pcd_file);
     registrator.getDataFromModel(database_path, transform_matrix, translation);
     registrator.alignModel();
-    registrator.calculateAlternativeRegistrations(50,0.001,10,15,angle_limit,distance_limit,false);
+    registrator.calculateAlternativeRegistrations(50,0.001,10,100,angle_limit,distance_limit,debug);
 
   }
 
@@ -90,7 +101,7 @@ int main(int argc, char** argv)
 
 
     registrator.getDataFromModel (database_path, transform_matrix, translation);
-    registrator.calculateKinfuTrackerRegistrations (50,0.001,25,angle_limit,distance_limit);
+    registrator.calculateKinfuTrackerRegistrations (device,50,0.001,100,angle_limit,distance_limit);
   }
 
 
