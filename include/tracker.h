@@ -24,28 +24,66 @@ class Tracker : public pcl::OpenNIGrabber
 
     typedef boost::shared_ptr<openni_wrapper::DepthImage> DepthImagePtr;
 
+    /**
+     * @brief Tracker
+     * @param [in] OpenCV code for the type of sensor to be used
+     */
+
     Tracker (int device);
 
+
     ~Tracker () throw ();
+
+    /**
+     * @brief Method to return the accumulated point cloud
+     * @return Pointer to the cloud in question
+     */
 
     pcl::PointCloud <pcl::PointXYZ>::Ptr
     getKinfuCloud();
 
+    /**
+     * @brief Method to get the pcl::PointXYZ of the center of the face
+     * @return
+     */
+
     pcl::PointXYZ
     getFaceCenter ();
+
+    /**
+     * @brief Method to check if a face was found
+     * @return True if a face was found, false otherwise
+     */
 
     bool
     isFaceFound ();
 
+    /**
+     * @brief Set method for the scan_ attribute
+     * @param scan
+     */
+
     void
     setScan (bool scan);
 
+    /**
+     * @brief Method for starting the thread of the recording
+     */
 
     void
     startUp ();
 
+    /**
+     * @brief Method to close the recording thread and for clean-up
+     */
+
     void
     close ();
+
+    /**
+     * @brief Method to be called periodically to scan the point cloud at the right moment
+     * @return Returns true if a point cloud has been just scanned
+     */
 
     bool
     execute ();
@@ -54,6 +92,11 @@ class Tracker : public pcl::OpenNIGrabber
 
 
   private:
+
+    /**
+     * @brief CallBack method to be run in the OpenNIGrabber
+     *
+     */
 
     void
     source_cb1_device (const boost::shared_ptr<openni_wrapper::DepthImage>& depth_wrapper);

@@ -16,7 +16,6 @@ Tracker::Tracker (int device)
   Eigen::Matrix3f R = Eigen::Matrix3f::Identity  ();
   translation_ = volume_size * 0.5f - Eigen::Vector3f  (0, 0, volume_size  (2) / 2 * 1.2f);
 
-  //translation_ = Eigen::Vector3f::Zero ();
 
   Eigen::Affine3f pose = Eigen::Translation3f  (translation_) * Eigen::AngleAxisf  (R);
 

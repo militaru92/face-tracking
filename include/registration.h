@@ -11,7 +11,9 @@
 #include <pcl/registration/default_convergence_criteria.h>
 
 
-
+/**
+ * @brief This class returns the shaped, statistical model
+ */
 class Registration
 {
   public:
@@ -25,18 +27,7 @@ class Registration
 
     void
     setDebugMode (bool debug_mode);
-/*
-    void
-    readDataFromOBJFiles (std::string source_points_path, std::string target_points_path);
 
-
-    void
-    readOBJFile (std::string file_path, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation, bool advance = true, int number_vertices = 4);
-
-
-    void
-    readDataFromOBJFileAndPCDScan (std::string source_points_path, std::string target_points_path, Eigen::Matrix3d transform_matrix, Eigen::Vector3d translation);
-*/
     /**
      * @brief Method for calculating the statistical model or for reading it from a file depending on where the database_path points to
      * @param [in] database_path Path to either the file that contains information about the model or to the directory that contains the Facewarehouse Database
@@ -65,7 +56,7 @@ class Registration
     getTargetPointCloudFromFile (std::string pcd_file);
 
     /**
-     * @brief Method to apply the Rigid Registration on the statistical model
+     * @brief Method to apply the Rigid Registration on the statistical model by operating on iteration_source_point_normal_cloud_ptr_
      * @param [in] Number of maximum iterations to apply
      * @param [in] The maximum allowed difference between the normals of two points to be considered correspondences
      * @param [in] The maximum distance between two points to be considered correspondences
@@ -76,7 +67,7 @@ class Registration
     calculateRigidRegistration (int number_of_iterations, double angle_limit, double distance_limit, bool visualize);
 
     /**
-     * @brief Method to apply the Non Rigid Registration on the model
+     * @brief Method to apply the Non Rigid Registration on the model by operating on eigen_source_points_
      * @param [in] The number of the first eigenvectors to be used for this step
      * @param [in] The weight to which the Regulating Energy is multiplied by
      * @param [in] The maximum allowed difference between the normals of two points to be considered correspondences
@@ -142,55 +133,129 @@ class Registration
 
   private:
 
+    /**
+     * @brief Callback method for the visualizer
+     */
 
     void
-    keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event, void* viewer_void);
+    keyboardCallback (const pcl::visualization::KeyboardEvent &event, void* viewer_void);
 
+
+    /**
+     * @brief Method to store the points from iteration_source_point_normal_cloud_ptr_ in eigen_source_points_
+     */
 
     void
     convertPointCloudToEigen ();
 
+    /**
+     * @brief Method to store the points from eigen_source_points_ in iteration_source_point_normal_cloud_ptr_
+     */
+
     void
     convertEigenToPointCLoud ();
 
+    /**
+     * @brief Method to create the kdtree of the scanned pointcloud and to calculate its normals
+     * @param [in] The scaned pointcloud
+     */
 
     void
     setKdTree (pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr);
 
-
-    std::pair<int,int> center_coordinates_;
-
+    /**
+     * @brief The kdtree for target_point_normal_cloud_ptr_ to be used for establishing the correspondences
+     */
 
     pcl::search::KdTree<pcl::PointXYZRGBNormal> kdtree_;
 
 
-    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr original_source_point_normal_cloud_ptr_;
+    /**
+     * @brief The scanned point cloud is stored in this data structure
+     */
+
+
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr target_point_normal_cloud_ptr_;
-    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr rigid_transformed_points_ptr_;
+
+    /**
+     * @brief The statistical model is stored in this data structure for an optimal application of the Rigid Registration
+     */
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr iteration_source_point_normal_cloud_ptr_;
 
     pcl::visualization::PCLVisualizer::Ptr visualizer_ptr_;
 
+    /**
+     * @brief The vertices of the mesh stored in obj format
+     */
+
     std::vector <  pcl::Vertices > model_mesh_;
+
+    /**
+     * @brief The vertices of the mesh stored in pcl format
+     */
     std::vector <  pcl::Vertices > debug_model_mesh_;
 
 
+    /**
+     * @brief The statistical model is stored in this data structure for an optimal application of the Non Rigid Registration
+     */
 
     Eigen::VectorXd eigen_source_points_;
+
+    /**
+     * @brief The eigenvalues of the model are stored in this data structure
+     */
     Eigen::VectorXd eigenvalues_vector_;
+
+    /**
+     * @brief The eigenvectors of the model are stored in this data structure
+     */
     Eigen::MatrixXd eigenvectors_matrix_;
+
+    /**
+     * @brief The average point of the model is stored in this data structure
+     */
 
     Eigen::Vector3d model_center_point_;
 
+    /**
+     * @brief The center of the face, detected with OpenCV, is stored in this structure
+     */
+
     pcl::PointXYZ face_center_point_;
+
+    /**
+     * @brief Pointer to the Tracker object
+     */
 
     boost::shared_ptr < Tracker > tracker_ptr_;
 
+    /**
+     * @brief Index used for debugging intermediate steps
+     */
+
     int index_;
 
+    /**
+     * @brief Boolean value used in the KinfuTracker approach to determine when the program should finish
+     */
+
     bool continue_tracking_;
+
+    /**
+     * @brief Boolean value used in the KinfuTracker approach to determine if a face was detected
+     */
+
+
     bool first_face_found_;
+
+    /**
+     * @brief Boolean value to determine if the program should show the intermediate results or jst the final one
+     */
+
     bool debug_mode_on_;
+
+    bool calculate_;
 
 
 

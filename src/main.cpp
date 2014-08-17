@@ -93,15 +93,15 @@ int main(int argc, char** argv)
     Eigen::Matrix3d transform_matrix = Eigen::Matrix3d::Identity();
     Eigen::Vector3d translation = Eigen::Vector3d::Zero();
 
-    transform_matrix(0,0) = 0.12;
-    transform_matrix(1,1) = 0.12;
-    transform_matrix(2,2) = 0.12;
+    transform_matrix(0,0) = 0.095;
+    transform_matrix(1,1) = 0.095;
+    transform_matrix(2,2) = 0.095;
 
     transform_matrix = Eigen::AngleAxisd(pi,Eigen::Vector3d::UnitX()) * transform_matrix;
 
 
     registrator.getDataFromModel (database_path, transform_matrix, translation);
-    registrator.calculateKinfuTrackerRegistrations (device,50,0.001,100,angle_limit,distance_limit);
+    registrator.calculateKinfuTrackerRegistrations (device,50,0.0001,100,angle_limit,distance_limit);
   }
 
 
