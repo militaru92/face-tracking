@@ -16,6 +16,8 @@ int main(int argc, char** argv)
 
   double scale = 0.117;
 
+  double energy_weight = 0.001;
+
   int device = CV_CAP_OPENNI;
 
 
@@ -27,6 +29,8 @@ int main(int argc, char** argv)
   pcl::console::parse_argument (argc, argv, "-distance", distance_limit);
   pcl::console::parse_argument (argc, argv, "-angle", angle_limit);
   pcl::console::parse_argument (argc, argv, "-scale", scale);
+  pcl::console::parse_argument (argc, argv, "-energy_weight", energy_weight);
+
 
   Eigen::Matrix3d transform_matrix = Eigen::Matrix3d::Identity();
   Eigen::Vector3d translation = Eigen::Vector3d::Zero();
@@ -59,7 +63,7 @@ int main(int argc, char** argv)
     registrator.getTargetPointCloudFromCamera(device,xml_file);
     registrator.getDataForModel(database_path, transform_matrix, translation);
     registrator.alignModel();
-    registrator.calculateAlternativeRegistrations(50,0.001,10,100,angle_limit,distance_limit,debug);
+    registrator.calculateAlternativeRegistrations(50,energy_weight,10,100,angle_limit,distance_limit,debug);
 
   }
 
@@ -73,7 +77,7 @@ int main(int argc, char** argv)
     registrator.getTargetPointCloudFromFile(pcd_file);
     registrator.getDataForModel(database_path, transform_matrix, translation);
     registrator.alignModel();
-    registrator.calculateAlternativeRegistrations(50,0.001,10,100,angle_limit,distance_limit,debug);
+    registrator.calculateAlternativeRegistrations(50,energy_weight,10,100,angle_limit,distance_limit,debug);
 
   }
 
@@ -82,7 +86,7 @@ int main(int argc, char** argv)
   {
 
     registrator.getDataForModel (database_path, transform_matrix, translation);
-    registrator.calculateKinfuTrackerRegistrations (device,50,0.0001,100,angle_limit,distance_limit);
+    registrator.calculateKinfuTrackerRegistrations (device,50,energy_weight,100,angle_limit,distance_limit);
   }
 
 
