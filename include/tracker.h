@@ -94,29 +94,75 @@ class Tracker : public pcl::OpenNIGrabber
   private:
 
     /**
-     * @brief CallBack method to be run in the OpenNIGrabber
+     * @brief CallBack method to be run in the OpenNIGrabber and stored an ordered cloud component in cloud_depth_ptr_
+     * @param [in]
      *
      */
 
     void
     source_cb1_device (const boost::shared_ptr<openni_wrapper::DepthImage>& depth_wrapper);
 
+    /**
+     * @brief Method that determines the position of the face and stores the tracked point cloud in cloud_kinfu_ptr_
+     */
+
     void
     takeKinfuCloud ();
 
+    /**
+     * @brief connection_
+     */
+
     boost::signals2::connection connection_;
 
+    /**
+     * @brief OpenCV VideoCapture
+     */
+
     cv::VideoCapture video_grabber_;
+
+    /**
+     * @brief OpenCV CascadeClassifier
+     */
+
     cv::CascadeClassifier face_classifier_;
 
+    /**
+     * @brief KinfuTracker
+     */
     pcl::gpu::KinfuTracker kinfu_;
+
+    /**
+     * @brief DepthMap to be updated in execute()
+     */
     pcl::gpu::KinfuTracker::DepthMap depth_device_;
 
+    /**
+     * @brief Pointer to the cloud where the accumulated pointcloud is stored
+     */
+
     pcl::PointCloud <pcl::PointXYZ>::Ptr cloud_kinfu_ptr_;
+
+    /**
+     * @brief Pointer to an ordered cloud which represents one phase of the scanning
+     */
     pcl::PointCloud <pcl::PointXYZ>::Ptr cloud_depth_ptr_;
 
+    /**
+     * @brief PCL point which represents the center of the face detected in the last scanning
+     */
+
     pcl::PointXYZ face_center_;
+
+    /**
+     * @brief DeviceArray to get data from GPU
+     */
     pcl::gpu::DeviceArray<pcl::PointXYZ> cloud_buffer_device_;
+
+
+    /**
+     * @brief Data structure used in the callback function
+     */
 
 
     pcl::gpu::PtrStepSz<const unsigned short> depth_;
@@ -124,13 +170,30 @@ class Tracker : public pcl::OpenNIGrabber
     boost::mutex data_ready_mutex_;
     boost::condition_variable data_ready_cond_;
 
+    /**
+     * @brief Data structure used in the callback function
+     */
+
+
     std::vector<unsigned short> source_depth_data_;
+
+    /**
+     * @brief Translation vector used for the calibration of the KinfuTracker
+     */
 
     Eigen::Vector3f translation_;
 
     boost::shared_ptr < boost::unique_lock < boost::mutex > > lock_ptr_;
 
+    /**
+     * @brief Boolean value that determines when a snapshot of the cloud should be taken
+     */
+
     bool scan_;
+
+    /**
+     * @brief Boolean value to determine weather a face was detected
+     */
     bool face_found_;
 
 

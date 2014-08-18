@@ -20,7 +20,7 @@ Registration::setDebugMode (bool debug_mode)
 }
 
 void
-Registration::getDataFromModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation)
+Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation)
 {
   int i,j;
 

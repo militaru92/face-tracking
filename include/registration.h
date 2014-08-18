@@ -36,7 +36,7 @@ class Registration
      */
 
     void
-    getDataFromModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation);
+    getDataForModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation);
 
     /**
      * @brief Method for a simple scanning of a face and for determining the coordinates of the face
