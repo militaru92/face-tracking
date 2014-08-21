@@ -36,7 +36,7 @@ class Registration
      */
 
     void
-    getDataForModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation);
+    getDataForModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation, double scale);
 
     /**
      * @brief Method for a simple scanning of a face and for determining the coordinates of the face
@@ -53,7 +53,7 @@ class Registration
      */
 
     void
-    getTargetPointCloudFromFile (std::string pcd_file);
+    getTargetPointCloudFromFile (std::string pcd_file, pcl::PointXYZ face_point);
 
     /**
      * @brief Method to apply the Rigid Registration on the statistical model by operating on iteration_source_point_normal_cloud_ptr_

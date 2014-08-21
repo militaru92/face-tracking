@@ -16,11 +16,9 @@ int main(int argc, char** argv)
 
   double scale = 0.117;
 
-  double energy_weight = 0.001;
+  double energy_weight = 0.2;
 
   int device = CV_CAP_OPENNI;
-
-
 
   Registration registrator;
 
@@ -61,9 +59,9 @@ int main(int argc, char** argv)
     pcl::console::parse_argument (argc, argv, "-xml_file", xml_file);
 
     registrator.getTargetPointCloudFromCamera(device,xml_file);
-    registrator.getDataForModel(database_path, transform_matrix, translation);
+    registrator.getDataForModel(database_path, transform_matrix, translation, scale);
     registrator.alignModel();
-    registrator.calculateAlternativeRegistrations(50,energy_weight,10,100,angle_limit,distance_limit,debug);
+    registrator.calculateAlternativeRegistrations(50,energy_weight,15,100,angle_limit,distance_limit,debug);
 
   }
 
@@ -74,10 +72,19 @@ int main(int argc, char** argv)
 
     pcl::console::parse_argument (argc, argv, "-target", pcd_file);
 
-    registrator.getTargetPointCloudFromFile(pcd_file);
-    registrator.getDataForModel(database_path, transform_matrix, translation);
+
+    float x,y,z;
+
+    pcl::console::parse_argument (argc, argv, "-x", x);
+    pcl::console::parse_argument (argc, argv, "-y", y);
+    pcl::console::parse_argument (argc, argv, "-z", z);
+
+    pcl::PointXYZ face(x,y,z);
+
+    registrator.getTargetPointCloudFromFile(pcd_file, face);
+    registrator.getDataForModel(database_path, transform_matrix, translation, scale);
     registrator.alignModel();
-    registrator.calculateAlternativeRegistrations(50,energy_weight,10,100,angle_limit,distance_limit,debug);
+    registrator.calculateAlternativeRegistrations(50,energy_weight,15,100,angle_limit,distance_limit,debug);
 
   }
 
@@ -85,7 +92,7 @@ int main(int argc, char** argv)
   if(pcl::console::find_switch (argc, argv, "--kinfu"))
   {
 
-    registrator.getDataForModel (database_path, transform_matrix, translation);
+    registrator.getDataForModel (database_path, transform_matrix, translation, scale);
     registrator.calculateKinfuTrackerRegistrations (device,50,energy_weight,100,angle_limit,distance_limit);
   }
 

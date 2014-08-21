@@ -20,7 +20,7 @@ Registration::setDebugMode (bool debug_mode)
 }
 
 void
-Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation)
+Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d transformation_matrix, Eigen::Vector3d translation, double scale)
 {
   int i,j;
 
@@ -66,7 +66,7 @@ Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d trans
       for (i = 0; i < rows; ++i)
       {
         ins >> aux;
-        eigen_source_points_ (i) = aux;
+        eigen_source_points_ (i) = aux * scale;
       }
 
       std::getline (ins,line);
@@ -104,6 +104,7 @@ Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d trans
       for (i = 0; i < rows; ++i)
       {
         ins >> eigenvalues_vector_ (i);
+        eigenvalues_vector_ (i) *= scale;
       }
 
       std::getline (ins,line);
@@ -120,6 +121,7 @@ Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d trans
         for (i = 0; i < rows; ++i)
         {
           ins >> eigenvectors_matrix_ (i,j);
+          eigenvectors_matrix_ (i,j) *= scale;
         }
       }
 
@@ -210,13 +212,9 @@ Registration::getTargetPointCloudFromCamera (int device, std::string file_classi
 }
 
 void
-Registration::getTargetPointCloudFromFile (std::string pcd_file)
+Registration::getTargetPointCloudFromFile (std::string pcd_file, pcl::PointXYZ face_point)
 {
 
-  std::pair<int,int> center_coordinates;
-
-  center_coordinates.first = 335;
-  center_coordinates.second = 191;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr target_point_cloud_ptr (new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -227,9 +225,7 @@ Registration::getTargetPointCloudFromFile (std::string pcd_file)
   }
 
 
-  face_center_point_.x = target_point_normal_cloud_ptr_->at (center_coordinates.first,center_coordinates.second).x;
-  face_center_point_.y = target_point_normal_cloud_ptr_->at (center_coordinates.first,center_coordinates.second).y;
-  face_center_point_.z = target_point_normal_cloud_ptr_->at (center_coordinates.first,center_coordinates.second).z;
+  face_center_point_ = face_point;
 
 
   setKdTree (target_point_cloud_ptr);
@@ -924,7 +920,12 @@ Registration::keyboardCallback (const pcl::visualization::KeyboardEvent &event, 
   if (c == '1' && debug_mode_on_)
   {
     pcl::io::savePCDFile ("target_cloud_bin_" + boost::lexical_cast<std::string> (index_) + ".pcd", *target_point_normal_cloud_ptr_, true);
+    std::ofstream ofs;
+    ofs.open("Face.txt", std::ofstream::out | std::ofstream::app);
+    ofs << face_center_point_.x << std::endl << face_center_point_.y << std::endl << face_center_point_.z << std::endl << std::endl;
+    ofs.close();
     ++index_;
+
   }
 
   if (c == '2' && debug_mode_on_)
@@ -932,6 +933,7 @@ Registration::keyboardCallback (const pcl::visualization::KeyboardEvent &event, 
     pcl::io::savePCDFile ("model_cloud_bin_" + boost::lexical_cast<std::string> (index_) + ".pcd", *iteration_source_point_normal_cloud_ptr_, true);
     ++index_;
   }
+
 
 
 
