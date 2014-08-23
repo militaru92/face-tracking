@@ -14,9 +14,9 @@ int main(int argc, char** argv)
 
   double distance_limit = 0.001, angle_limit = pi * 0.25;
 
-  double scale = 0.117;
+  double scale = 0.98 * 0.82;
 
-  double energy_weight = 0.2;
+  double energy_weight = 0.001;
 
   int device = CV_CAP_OPENNI;
 

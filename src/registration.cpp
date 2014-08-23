@@ -26,8 +26,11 @@ Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d trans
 
   boost::filesystem::path data_path (database_path);
 
+
+
   if ( boost::filesystem::exists (data_path) )
   {
+    /***** In case the database_path is a folder, the information is calculated from scratch with the methods from PositionModel *****/
     if ( boost::filesystem::is_directory (data_path) )
     {
       PositionModel position_model;
@@ -44,6 +47,8 @@ Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d trans
       eigenvectors_matrix_ = position_model.getEigenVectors (true);
       PCL_INFO ("Done with eigenvectors\n");
     }
+
+    /***** In case the database_path is a folder, the information is calculated from scratch with the methods from PositionModel *****/
 
     else if ( boost::filesystem::is_regular_file (data_path))
     {
@@ -568,9 +573,6 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
     }
 
 
-
-
-
     current_homogeneus_matrix.block (0, 0, 3, 3) = current_iteration_rotation.cast < float > ();
     current_homogeneus_matrix.block (0, 3, 3, 1) = current_iteration_translation.cast < float > ();
     current_homogeneus_matrix.row (3) << 0, 0, 0, 1;
@@ -595,7 +597,7 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
   convertPointCloudToEigen ();
 
 }
-
+/*
 void
 Registration::calculateNonRigidRegistration (int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit, bool visualize)
 {
@@ -607,7 +609,7 @@ Registration::calculateNonRigidRegistration (int number_eigenvectors, double reg
   correspondences = filterNonRigidCorrespondences (angle_limit,distance_limit);
 
 
-  Eigen::MatrixXd J_transpose,JJ_total, J_point_to_point (correspondences.size () * 3,number_eigenvectors), Reg_diagonal_matrix;
+  Eigen::MatrixXd J_transpose,JJ_total, J_point_to_plane (correspondences.size () * 3,number_eigenvectors), Reg_diagonal_matrix;
   Eigen::VectorXd d,Jy,y (correspondences.size () * 3);
 
   Reg_diagonal_matrix = Eigen::MatrixXd::Identity (number_eigenvectors,number_eigenvectors);
@@ -622,9 +624,9 @@ Registration::calculateNonRigidRegistration (int number_eigenvectors, double reg
   for ( i = 0; i < correspondences.size (); ++i)
   {
 
-    J_point_to_point.row (i * 3) = eigenvectors_matrix_.block (correspondences[i].index_query * 3,0,1,number_eigenvectors);
-    J_point_to_point.row (i * 3 + 1) = eigenvectors_matrix_.block (correspondences[i].index_query * 3 + 1,0,1,number_eigenvectors);
-    J_point_to_point.row (i * 3 + 2) = eigenvectors_matrix_.block (correspondences[i].index_query * 3 + 2,0,1,number_eigenvectors);
+    J_point_to_plane.row (i * 3) = eigenvectors_matrix_.block (correspondences[i].index_query * 3,0,1,number_eigenvectors);
+    J_point_to_plane.row (i * 3 + 1) = eigenvectors_matrix_.block (correspondences[i].index_query * 3 + 1,0,1,number_eigenvectors);
+    J_point_to_plane.row (i * 3 + 2) = eigenvectors_matrix_.block (correspondences[i].index_query * 3 + 2,0,1,number_eigenvectors);
 
 
     y (i * 3) = target_point_normal_cloud_ptr_->at (correspondences[i].index_match).x - eigen_source_points_ (correspondences[i].index_query * 3);
@@ -636,9 +638,9 @@ Registration::calculateNonRigidRegistration (int number_eigenvectors, double reg
 
 
 
-  J_transpose = J_point_to_point.transpose ();
+  J_transpose = J_point_to_plane.transpose ();
 
-  JJ_total = (J_transpose * J_point_to_point) + (Reg_diagonal_matrix * reg_weight);
+  JJ_total = (J_transpose * J_point_to_plane) + (Reg_diagonal_matrix * reg_weight);
 
 
   Jy = J_transpose * y;
@@ -674,7 +676,97 @@ Registration::calculateNonRigidRegistration (int number_eigenvectors, double reg
 
 
 }
+*/
 
+
+void
+Registration::calculateNonRigidRegistration (int number_eigenvectors, double reg_weight, double angle_limit, double distance_limit, bool visualize)
+{
+
+  int i,j;
+
+  pcl::Correspondences correspondences;
+
+  correspondences = filterNonRigidCorrespondences (angle_limit,distance_limit);
+
+
+  Eigen::MatrixXd J_transpose,JJ_total, J_point_to_plane (correspondences.size (), number_eigenvectors), Reg_diagonal_matrix;
+  Eigen::VectorXd d,Jy,y (correspondences.size ());
+
+  Reg_diagonal_matrix = Eigen::MatrixXd::Identity (number_eigenvectors,number_eigenvectors);
+
+  for (i = 0; i < Reg_diagonal_matrix.rows (); ++i)
+  {
+    Reg_diagonal_matrix (i,i) = 1.0 / eigenvalues_vector_[i];
+  }
+
+
+
+  for ( i = 0; i < correspondences.size (); ++i)
+  {
+
+    Eigen::Vector3d normal,source_point;
+
+
+    normal[0] = target_point_normal_cloud_ptr_->at (correspondences[i].index_match).normal_x;
+    normal[1] = target_point_normal_cloud_ptr_->at (correspondences[i].index_match).normal_y;
+    normal[2] = target_point_normal_cloud_ptr_->at (correspondences[i].index_match).normal_z;
+
+    source_point = iteration_source_point_normal_cloud_ptr_->at (correspondences[i].index_query).getVector3fMap ().cast<double> ();
+
+    for ( j = 0; j < number_eigenvectors; ++j)
+    {
+
+      Eigen::Vector3d vector = eigenvectors_matrix_.block (correspondences[i].index_query * 3,j,3,1).cast<double> ();
+
+      J_point_to_plane(i,j) = (vector.dot (normal));
+
+    }
+
+    y (i) += ((target_point_normal_cloud_ptr_->at (correspondences[i].index_match).getVector3fMap ().cast<double> () - source_point).dot(normal));
+
+  }
+
+
+
+  J_transpose = J_point_to_plane.transpose ();
+
+  JJ_total = (J_transpose * J_point_to_plane) /**+ (Reg_diagonal_matrix * reg_weight)*/;
+
+
+  Jy = J_transpose * y;
+
+
+
+  d = JJ_total.colPivHouseholderQr ().solve (Jy);
+
+  eigen_source_points_ += eigenvectors_matrix_.block (0,0,eigenvectors_matrix_.rows (),number_eigenvectors) * d;
+
+  convertEigenToPointCLoud ();
+
+  if (visualize)
+  {
+    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb_cloud_current_source (iteration_source_point_normal_cloud_ptr_);
+
+
+    visualizer_ptr_->addPointCloud < pcl::PointXYZRGBNormal > (iteration_source_point_normal_cloud_ptr_, rgb_cloud_current_source, "model");
+
+
+    if (debug_mode_on_)
+    {
+      visualizer_ptr_->spin ();
+    }
+
+    else
+    {
+      visualizer_ptr_->spinOnce (500);
+    }
+
+
+  }
+
+
+}
 
 void
 Registration::calculateAlternativeRegistrations (int number_eigenvectors, double reg_weight, int number_of_total_iterations, int number_of_rigid_iterations, double angle_limit, double distance_limit, bool visualize)
@@ -906,11 +998,6 @@ Registration::keyboardCallback (const pcl::visualization::KeyboardEvent &event, 
     calculate_ = true;
   }
 
-  if (c == 's' && debug_mode_on_)
-  {
-    visualizer_ptr_->saveScreenshot("ScreenShot" + boost::lexical_cast<std::string> ( index_ ) + ".png");
-    ++index_;
-  }
 
   if (c == 'x')
   {
@@ -934,6 +1021,16 @@ Registration::keyboardCallback (const pcl::visualization::KeyboardEvent &event, 
     ++index_;
   }
 
+  if (c == '3' && debug_mode_on_)
+  {
+    visualizer_ptr_->addSphere < pcl::PointXYZ > (face_center_point_,0.025,"sphere");
+  }
+
+
+  if (c == '4' && debug_mode_on_)
+  {
+    visualizer_ptr_->removeShape ("sphere");
+  }
 
 
 
