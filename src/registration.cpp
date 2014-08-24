@@ -1,4 +1,5 @@
 #include <registration.h>
+#include <pcl/registration/transformation_estimation_svd.h>
 
 Registration::Registration ()
 {
@@ -30,7 +31,7 @@ Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d trans
 
   if ( boost::filesystem::exists (data_path) )
   {
-    /***** In case the database_path is a folder, the information is calculated from scratch with the methods from PositionModel *****/
+    /* In case the database_path is a folder, the information is calculated from scratch with the methods from PositionModel */
     if ( boost::filesystem::is_directory (data_path) )
     {
       PositionModel position_model;
@@ -48,12 +49,12 @@ Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d trans
       PCL_INFO ("Done with eigenvectors\n");
     }
 
-    /***** In case the database_path is a folder, the information is calculated from scratch with the methods from PositionModel *****/
+    /* In case the database_path is a folder, the information is calculated from scratch with the methods from PositionModel */
 
     else if ( boost::filesystem::is_regular_file (data_path))
     {
 
-      /***** This section will read the coordinates of the of the vertices of the model *****/
+      /* This section will read the coordinates of the of the vertices of the model */
 
       std::ifstream ins (database_path.c_str ());
 
@@ -79,7 +80,7 @@ Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d trans
       std::getline (ins,line);
       std::getline (ins,line);
 
-      /***** This section will read the mesh the model *****/
+      /* This section will read the mesh the model */
 
       while (true)
       {
@@ -103,7 +104,7 @@ Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d trans
 
       }
 
-      /***** This section will read the eigenvalues and eigenvectors *****/
+      /* This section will read the eigenvalues and eigenvectors */
 
       ins >> rows;
 
@@ -149,7 +150,7 @@ Registration::getDataForModel (std::string database_path, Eigen::MatrixX3d trans
     exit (1);
   }
 
-  /***** This part will decrement the indices from the OBJ mesh in order to be used as PCL meshes since the numerotation in PCL starts at 0 and in OBJ at 1  *****/
+  /* This part will decrement the indices from the OBJ mesh in order to be used as PCL meshes since the numerotation in PCL starts at 0 and in OBJ at 1  */
 
   debug_model_mesh_ = model_mesh_;
 
@@ -234,9 +235,7 @@ Registration::getTargetPointCloudFromFile (std::string pcd_file, pcl::PointXYZ f
     exit (1);
   }
 
-
   face_center_point_ = face_point;
-
 
   setKdTree (target_point_cloud_ptr);
 }
@@ -247,6 +246,8 @@ Registration::alignModel ()
 {
 
   Eigen::Vector3d translation = face_center_point_.getVector3fMap ().cast<double> () - model_center_point_;
+
+  translation[2] += 0.05;
 
   pcl::transformPointCloudWithNormals (*iteration_source_point_normal_cloud_ptr_,*iteration_source_point_normal_cloud_ptr_,translation,Eigen::Quaternion<double>::Identity ());
 
@@ -286,7 +287,7 @@ Registration::convertEigenToPointCLoud ()
      iteration_source_point_normal_cloud_ptr_->push_back (pcl_point);
    }
 
-   /***** This part will calculate the normals for each quad of the mesh *****/
+   /* This part will calculate the normals for each quad of the mesh */
 
    std::vector < std::vector < Eigen::Vector3d > > normal_vector (iteration_source_point_normal_cloud_ptr_->points.size ());
    std::vector < std::vector < double > > surface_vector (iteration_source_point_normal_cloud_ptr_->points.size ());
@@ -300,7 +301,7 @@ Registration::convertEigenToPointCLoud ()
      int number_vertices = model_mesh_[k].vertices.size ();
      double angle, maximum_angle = 0.0;
 
-     /***** The following for-loop will determine which angle is the biggest for the current quad by comparing the dot products of the vectors that form an angle  *****/
+     /* The following for-loop will determine which angle is the biggest for the current quad by comparing the dot products of the vectors that form an angle  */
 
      for ( i = model_mesh_[k].vertices.size (); i < model_mesh_[k].vertices.size () * 2; ++i)
      {
@@ -321,7 +322,7 @@ Registration::convertEigenToPointCLoud ()
        }
      }
 
-     /***** The following part will store for each 2 triangles forming a quad, the area of the triangle and its normal *****/
+     /* The following part will store for each 2 triangles forming a quad, the area of the triangle and its normal */
 
      Eigen::Vector3d edge,normal_1,normal_2;
 
@@ -362,7 +363,7 @@ Registration::convertEigenToPointCLoud ()
 
    }
 
-   /***** The following loops will calculate th average normal for each vertice *****/
+   /* The following loops will calculate th average normal for each vertice */
 
    for ( i = 0; i < iteration_source_point_normal_cloud_ptr_->points.size (); ++i)
    {
@@ -445,10 +446,11 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
   }
 
   Eigen::Matrix4f current_homogeneus_matrix;
+
   pcl::Correspondences iteration_correspondences;
 
-  pcl::registration::DefaultConvergenceCriteria < float > convergence(j, current_homogeneus_matrix,iteration_correspondences);
 
+  pcl::registration::DefaultConvergenceCriteria < float > convergence(j, current_homogeneus_matrix,iteration_correspondences);
 
   for (j = 0; j < number_of_iterations; ++j)
   {
@@ -459,8 +461,8 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
 
     for (i = 0; i < current_iteration_source_points_ptr->size (); ++i)
     {
-      /***** The following part will establish the correspondences between the points of the model and the points of the target
-       * by looking for the closest point in the kdtree of the target and analyzing the difference between their normals *****/
+      /* The following part will establish the correspondences between the points of the model and the points of the target
+       * by looking for the closest point in the kdtree of the target and analyzing the difference between their normals */
 
       pcl::PointXYZRGBNormal search_point;
 
@@ -497,14 +499,14 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
       if ( point_distance[0] < distance_limit && std::acos (dot_product) < angle_limit)
       {
 
-        /***** If the correspondence is valid we initialize the Jacobian matrix so that we can determine the rotation angles for each axis and the translation in a point-to-plane fashion
+        /* If the correspondence is valid we initialize the Jacobian matrix so that we can determine the rotation angles for each axis and the translation in a point-to-plane fashion
          * Since this is point to plane we need to minimize the sum of: ( R * p_i + t - q_i ) * normal_i
          * Note that we assume the rotation angles are small, therefore the equation becomes
          *                                                                             (angle_x)
          * normal_i * ( p_i -q_i ) + normal_i * translation + ( p_(i) X normal_(i) ) * (angle_y)
          *                                                                             (angle_z)
          * For more information consult: http://www.cs.princeton.edu/~smr/papers/icpstability.pdf
-         *****/
+         */
 
         Eigen::Vector3d aux_vector;
 
@@ -561,7 +563,7 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
 
     }
 
-    /***** The following part calculates the solution of the liniearized system *****/
+    /* The following part calculates the solution of the liniearized system */
 
     Eigen::MatrixXd J_transpose,JJ, J_filtered (k,6);
 
@@ -578,10 +580,7 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
 
     Eigen::MatrixXd right_side = J_transpose * y_filtered;
 
-
-
     solutions = JJ.colPivHouseholderQr ().solve (right_side);
-
 
     current_iteration_rotation = Eigen::AngleAxisd (solutions[0],Eigen::Vector3d::UnitX ()) * Eigen::AngleAxisd (solutions[1],Eigen::Vector3d::UnitY ()) * Eigen::AngleAxisd (solutions[2],Eigen::Vector3d::UnitZ ()) ;
 
@@ -596,21 +595,52 @@ Registration::calculateRigidRegistration (int number_of_iterations, double angle
     current_homogeneus_matrix.block (0, 3, 3, 1) = current_iteration_translation.cast < float > ();
     current_homogeneus_matrix.row (3) << 0, 0, 0, 1;
 
+    /* The following commented code is used to compare the accuracy of the Rigid Registration method implemented in this project with the pcl::method */
+
+    /*
+    pcl::registration::TransformationEstimationSVD < pcl::PointXYZRGBNormal, pcl::PointXYZRGBNormal, float > estimator;
+
+    Eigen::Matrix4f estimation_matrix;
+
+    estimator.estimateRigidTransformation(*current_iteration_source_points_ptr, *target_point_normal_cloud_ptr_,iteration_correspondences,estimation_matrix);
+
+    std::ofstream ofs;
+
+    ofs.open("compare.txt", std::ofstream::out | std::ofstream::app);
+
+    for( i = 0; i < 4; ++i)
+    {
+      for( k = 0; k < 4; ++k)
+      {
+        ofs << current_homogeneus_matrix(i,k) << ' ';
+      }
+
+      ofs << "  ----  ";
+
+      for( k = 0; k < 4; ++k)
+      {
+        ofs << estimation_matrix(i,k) << ' ';
+      }
+
+      ofs << "\n";
+    }
+
+    ofs << "\n\n\n";
+    */
+
     pcl::PointCloud<pcl::PointXYZRGBNormal> result;
 
     pcl::transformPointCloudWithNormals (*current_iteration_source_points_ptr,result,current_homogeneus_matrix);
 
     pcl::copyPointCloud (result,*current_iteration_source_points_ptr);
 
-    /***** Check if convergence was achieved by using the DefaultConvergence class *****/
+    /* Check if convergence was achieved by using the DefaultConvergence class */
 
 
     if( convergence.hasConverged () )
     {
       break;
     }
-
-
 
 
   }
@@ -642,12 +672,12 @@ Registration::calculateNonRigidRegistration (int number_eigenvectors, double reg
     Reg_diagonal_matrix (i,i) = 1.0 / eigenvalues_vector_[i];
   }
 
-  /***** In the following for-loop the equations for the Non Rigid Registration are calculated
+  /* In the following for-loop the equations for the Non Rigid Registration are calculated
    * The sum to be minimized is: normal_i * (p_i - q_i + d_0 * eigenvector_0 + d_1 * eigenvector_1 + d_1 * eigenvector_1 + ... )
    * The "d" coefficients need to be determined
    *
    *
-   *****/
+   */
 
 
   for ( i = 0; i < correspondences.size (); ++i)
@@ -679,7 +709,7 @@ Registration::calculateNonRigidRegistration (int number_eigenvectors, double reg
 
   J_transpose = J_point_to_plane.transpose ();
 
-  /***** This is where the Regularizing Matrix is taken into account *****/
+  /* This is where the Regularizing Matrix is taken into account */
 
   JJ_total = (J_transpose * J_point_to_plane) + (Reg_diagonal_matrix * reg_weight);
 
@@ -727,8 +757,6 @@ Registration::calculateAlternativeRegistrations (int number_eigenvectors, double
     visualizer_ptr_->setBackgroundColor (1, 1, 1);
     visualizer_ptr_->initCameraParameters ();
   }
-
-  //pcl::io::savePCDFile ("model.pcd", *iteration_source_point_normal_cloud_ptr_, true);
 
   for ( i = 0; i < number_of_total_iterations; ++i)
   {

@@ -75,7 +75,7 @@ void
 Tracker::takeKinfuCloud ()
 {
 
-  /***** OpenCV code to detect the center of the face ******/
+  /* OpenCV code to detect the center of the face */
 
   face_found_ = false;
 
@@ -105,7 +105,7 @@ Tracker::takeKinfuCloud ()
 
   }
 
-  /***** This part accumulates the point cloud in cloud_kinfu_ptr_ ******/
+  /* This part accumulates the point cloud in cloud_kinfu_ptr_ */
 
 
   pcl::gpu::DeviceArray<pcl::PointXYZ> extracted = kinfu_.volume ().fetchCloud  (cloud_buffer_device_);

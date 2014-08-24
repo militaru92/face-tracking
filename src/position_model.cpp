@@ -4,10 +4,10 @@
 void
 PositionModel::readDataFromFolders (std::string path, int number_samples, int number_vertices, Eigen::Matrix3d transformation_matrix, Eigen::Vector3d translation)
 {
-  /***** When I implemented this program I used the database in its original form
+  /* When I implemented this program I used the database in its original form
    * The folder of the database contained the meshes in paths of the form Tester_< number>/Blendshape/shape_0.obj
    *
-   *****/
+   */
   std::string tester ("Tester_"),full_path,last_part ("/Blendshape/shape_0.obj"),line,value;
   size_t index;
   int i,j,k;
@@ -142,7 +142,7 @@ PositionModel::calculateEigenValuesAndVectors ()
   int i,j;
   Eigen::VectorXd v;
 
-  /***** The idea is to calculate the eigenvectors in an optimal way
+  /* The idea is to calculate the eigenvectors in an optimal way
    * The covariance matrix is calculatd by C = T * T.transpose() and it has a size of 34530 x 34530.
    * To find the eigenvectors with fewer computations we can apply the fact that if we calculate an eigenvector of T.transpose() * T
    * and then we calculate T * eigenvector (T.transpose() * T), the eigenvector of C is obtined
